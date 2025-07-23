@@ -1,0 +1,15 @@
+.footer {
+    padding: 1.5rem 0;
+    border-top: 1px solid #e9e9e9;
+}
+
+.wrapper {
+    width: 1120px;
+    max-width: 90%;
+    margin: 0 auto;
+}
+
+.copyright {
+    text-align: center;
+    font-size: 0.750rem;
+}
