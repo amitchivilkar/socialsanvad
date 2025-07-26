@@ -6,6 +6,7 @@ export const metadata = {
     title: 'Social Sanvad Blog',
 }
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getPosts() {
