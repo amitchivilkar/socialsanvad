@@ -4,7 +4,7 @@ import { PortableText } from '@portabletext/react'
 import Header from '../../../components/Header/header';
 import Footer from '../../../components/Footer/footer';
 
-
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function generateStaticParams() {
