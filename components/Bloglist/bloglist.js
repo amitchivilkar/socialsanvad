@@ -6,10 +6,10 @@ export const metadata = {
     title: 'Social Sanvad Blog',
 }
 
-export const revalidate = 60;
+export const revalidate = 0;
 
 async function getPosts() {
-    const query = `*[_type == "post"] | order(_createdAt desc){
+    const query = `*[_type == "post" && publishedAt < now()] | order(_createdAt desc){
     _id,
     title,
     slug,
