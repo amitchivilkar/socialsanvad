@@ -9,7 +9,7 @@ export const metadata = {
 export const revalidate = 0;
 
 async function getPosts() {
-    const query = `*[_type == "post" && publishedAt < now()] | order(_createdAt desc){
+    const query = `*[_type == "post" && defined(publishedAt) && publishedAt < now()] | order(publishedAt desc){
     _id,
     title,
     slug,
