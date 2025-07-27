@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 
 
 export const metadata = {
-  title: "Social Sanad",
+  title: "Social Sanvad",
   description: "A website for to learn how technology works in Politics",
   icons: {
     icon: '/favicon.ico', // Path from public folder
