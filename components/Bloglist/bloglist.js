@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+
 
 async function getPosts() {
     const query = `*[_type == "post" && defined(publishedAt) && publishedAt < now()] | order(publishedAt desc){
