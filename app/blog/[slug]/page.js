@@ -3,20 +3,11 @@ import styles from '../../../components/Bloglist/Bloglist.module.css';
 import { PortableText } from '@portabletext/react'
 import Header from '../../../components/Header/header';
 import Footer from '../../../components/Footer/footer';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-export async function generateStaticParams() {
-  const posts = await client.fetch(`*[_type == "post"]{ slug }`)
-  return posts.map(post => ({ slug: post.slug.current }))
-}
-
-export default async function BlogPostPage({ params }) {
-  const { slug } = params;
-
-  const post = await client.fetch(
-    `*[_type == "post" && slug.current == $slug][0]{
+async function getPost(slug) {
+  const query =  `*[_type == "post" && slug.current == $slug][0]{
       title,
       publishedAt,
       body,
@@ -24,11 +15,20 @@ export default async function BlogPostPage({ params }) {
         name,
         image
       }
-    }`,
-    { slug }
-  )
+    }`
 
-  if (!post) return <p>Post not found</p>
+    const post = await client.fetch(query, { slug })
+
+    return post 
+}
+
+
+export default async function BlogPostPage({ params }) {
+  const post = await getPost(params.slug)
+
+  if(!post) {
+    notFound()
+  }
 
 
   return (
