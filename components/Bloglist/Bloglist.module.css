@@ -19,6 +19,11 @@
 .blogs__wrapper p:first-child {
     padding-top: 1rem;
 }
+.blogs__wrapper ul {
+    margin-left: 1rem;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
 
 .blog__card {
     border-bottom: 1px solid #333;

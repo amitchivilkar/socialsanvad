@@ -6,6 +6,8 @@ import Footer from '../../../components/Footer/footer';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
+
+
 async function getPost(slug) {
   const query =  `*[_type == "post" && slug.current == $slug][0]{
       title,
@@ -21,6 +23,8 @@ async function getPost(slug) {
 
     return post 
 }
+
+
 
 
 export default async function BlogPostPage({ params }) {
