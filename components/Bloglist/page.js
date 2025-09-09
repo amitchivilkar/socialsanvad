@@ -1,12 +1,14 @@
 import Link from 'next/link';
+import { SanityDocument } from 'next-sanity';
 import client from '../../lib/sanity';
 import styles from './Bloglist.module.css';
 
-// export const dynamic = 'force-dynamic';
-export const revalidate = 60;
 
-async function getPosts() {
-    const query = `*[_type == "post" && defined(publishedAt) && publishedAt < now()] | order(publishedAt desc){
+// export const dynamic = 'force-dynamic';
+// export const revalidate = 60;
+
+
+const POSTS_QUERY = `*[_type == "post" && defined(publishedAt) && publishedAt < now()] | order(publishedAt desc){
     _id,
     title,
     slug,
@@ -15,12 +17,16 @@ async function getPosts() {
     "author": author->{
         name
       }
-  }`
-  return await client.fetch(query)
-}
+}`;
+ 
 
 export default async function Bloglist() {
-    const posts = await getPosts()
+    const posts = await client.fetch(
+        POSTS_QUERY,
+        {}, 
+        { next: { revalidate: 30 } }
+    );
+
     return (
         <>
             <main className={styles.blogs}>
