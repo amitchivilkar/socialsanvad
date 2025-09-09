@@ -26,20 +26,20 @@
 }
 
 .blog__card {
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #e9e9e9    ;
     padding: 2rem 0;
 }
 
 .blog__title {
     font-size: 2rem;
     line-height: 1.4;
-    font-weight: 400;
+    font-weight: 300;
 }
 
 .blog__byline {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #545454;
+    color: #8a8a8a;
     margin: 0.8rem 0;
 
     display: flex;
