@@ -10,9 +10,9 @@ export default function Header() {
     const toggleMenu = () => setIsOpen(!isOpen);
 
     const menuItems = [
-        { title: "होम", url: "/" },
-        { title: "आम्ही कोण", url:"/about" },
-        { title: "ब्लॉग", url: "/blog" },
+        // { title: "होम", url: "/" },
+        // { title: "आम्ही कोण", url:"/about" },
+        // { title: "ब्लॉग", url: "/blog" },
         { title: "Let's Subscribe", url: "/"}
     ]
 
