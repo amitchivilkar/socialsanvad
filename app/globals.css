@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #111111;
+  --secondary: #f8f8f8;
+  --border: #eaeaea;
+  --muted: #666666;
+  --primary: #f7df1e;
+  --primary-foreground: #111111;
+  --primary-soft: #fff8c4;
+  /*
+    English → Inter
+    Marathi → same system cascade Cursor/macOS UI uses
+    (do NOT force Kohinoor — let -apple-system pick the UI Devanagari face)
+  */
+  --font-body:
+    var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+}
+
+.dark {
+  --background: #0c0c0c;
+  --foreground: #f2f2f2;
+  --secondary: #161616;
+  --border: #2a2a2a;
+  --muted: #a0a0a0;
+  --primary: #f7df1e;
+  --primary-foreground: #111111;
+  --primary-soft: #2a2610;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-secondary: var(--secondary);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-body);
+  --font-english: var(--font-inter), sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-heading {
+  font-family: var(--font-body);
+}
+
+.font-english {
+  font-family: var(--font-inter), sans-serif;
+}
+
+#article-content > p:first-of-type {
+  font-size: 1.2rem;
+  line-height: 1.75;
+  color: var(--foreground);
+  margin-top: 0;
+}
+
+#article-content blockquote p {
+  margin: 0;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+pre code {
+  display: grid;
+  background: transparent !important;
+  font-family: var(--font-mono);
+}
+
+[data-rehype-pretty-code-figure] pre {
+  margin: 0;
+}
+
+[data-line] {
+  padding-inline: 0;
+}
