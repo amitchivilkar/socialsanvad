@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "लेख",
   description:
     "सोशल मीडिया, AI, WhatsApp आणि निवडणुकीबद्दल सोप्या मराठीतले लेख.",
-  alternates: { canonical: "/lekha" },
+  alternates: { canonical: "/articles" },
 };
 
 export default function LekhaPage() {

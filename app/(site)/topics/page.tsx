@@ -17,7 +17,7 @@ import { Container } from "@/components/ui/container";
 export const metadata: Metadata = {
   title: "विषय",
   description: "सोशल मीडिया, AI, WhatsApp, निवडणूक — सगळे विषय एकत्र.",
-  alternates: { canonical: "/vishay" },
+  alternates: { canonical: "/topics" },
 };
 
 const iconMap = {
@@ -53,7 +53,7 @@ export default function VishayPage() {
             return (
               <Link
                 key={cat.slug}
-                href={`/vishay/${cat.slug}`}
+                href={`/topics/${cat.slug}`}
                 className="rounded-2xl border border-[var(--border)] p-6 transition-colors hover:bg-[var(--secondary)]"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary)]">

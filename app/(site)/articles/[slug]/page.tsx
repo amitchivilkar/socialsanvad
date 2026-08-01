@@ -36,7 +36,7 @@ export async function generateMetadata({
 
   const title = article.seo?.title ?? article.title;
   const description = article.seo?.description ?? article.description;
-  const url = absoluteUrl(`/lekha/${article.slug}`);
+  const url = absoluteUrl(`/articles/${article.slug}`);
 
   return {
     title,
@@ -95,7 +95,7 @@ export default async function ArticlePage({
         url: absoluteUrl("/images/logo.png"),
       },
     },
-    mainEntityOfPage: absoluteUrl(`/lekha/${article.slug}`),
+    mainEntityOfPage: absoluteUrl(`/articles/${article.slug}`),
     inLanguage: "mr",
     articleSection: getCategoryName(article.category),
     keywords: article.tags.join(", "),
@@ -115,10 +115,10 @@ export default async function ArticlePage({
           <Breadcrumbs
             items={[
               { label: "होमपेज", href: "/" },
-              { label: "लेख", href: "/lekha" },
+              { label: "लेख", href: "/articles" },
               {
                 label: getCategoryName(article.category),
-                href: `/vishay/${article.category}`,
+                href: `/topics/${article.category}`,
               },
               { label: article.title },
             ]}
@@ -127,7 +127,7 @@ export default async function ArticlePage({
           <header className="border-b border-[var(--border)] pb-10">
             <p className="text-sm font-medium text-[var(--muted)]">
               <a
-                href={`/vishay/${article.category}`}
+                href={`/topics/${article.category}`}
                 className="hover:text-[var(--foreground)]"
               >
                 {getCategoryName(article.category)}

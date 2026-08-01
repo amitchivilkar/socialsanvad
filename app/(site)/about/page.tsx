@@ -9,7 +9,7 @@ import { Newsletter } from "@/components/home/newsletter";
 export const metadata: Metadata = {
   title: "माझ्याबद्दल",
   description: siteConfig.author.bio,
-  alternates: { canonical: "/majhyabadal" },
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {

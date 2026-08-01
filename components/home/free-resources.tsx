@@ -14,25 +14,25 @@ const resources = [
   {
     title: "Prompt Library",
     description: "मेसेज, पोस्ट आणि भाषणासाठी तयार प्रॉम्प्ट्स",
-    href: "/sansadhane#prompts",
+    href: "/resources#prompts",
     icon: Library,
   },
   {
     title: "टेम्पलेट्स",
     description: "पोस्ट आणि WhatsApp साठी साधे टेम्पलेट्स",
-    href: "/sansadhane#templates",
+    href: "/resources#templates",
     icon: FileText,
   },
   {
     title: "चेकलिस्ट्स",
     description: "कामाच्या छोट्या याद्या",
-    href: "/sansadhane#checklists",
+    href: "/resources#checklists",
     icon: CheckSquare,
   },
   {
     title: "मार्गदर्शिका",
     description: "स्टेप बाय स्टेप कसं करायचं",
-    href: "/sansadhane#guides",
+    href: "/resources#guides",
     icon: BookMarked,
   },
 ];
@@ -44,7 +44,7 @@ export function FreeResources() {
         <SectionHeading
           title="मोफत साधने"
           description="आजच वापरता येतील अशा गोष्टी"
-          href="/sansadhane"
+          href="/resources"
           linkLabel="सगळे साधने"
         />
 

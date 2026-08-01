@@ -8,7 +8,7 @@ const LEGAL_EMAIL = "socialsanvad@gmail.com";
 export const metadata: Metadata = {
   title: "Terms & Conditions",
   description: `Terms and conditions for using ${siteConfig.name} and purchasing digital products.`,
-  alternates: { canonical: "/niyam" },
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
@@ -89,7 +89,7 @@ export default function TermsPage() {
         <h2>6. Payments and refunds</h2>
         <p className="mt-3">
           Details about payment, delivery, and refunds are in our{" "}
-          <Link href="/paratava">Payment & Refund Policy</Link>.
+          <Link href="/refunds">Payment & Refund Policy</Link>.
         </p>
       </section>
 
@@ -97,7 +97,7 @@ export default function TermsPage() {
         <h2>7. Privacy</h2>
         <p className="mt-3">
           How we handle your data is explained in our{" "}
-          <Link href="/gopanita">Privacy Policy</Link>.
+          <Link href="/privacy">Privacy Policy</Link>.
         </p>
       </section>
 

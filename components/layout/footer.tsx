@@ -113,7 +113,7 @@ export function Footer() {
               {categories.slice(0, 6).map((cat) => (
                 <li key={cat.slug}>
                   <Link
-                    href={`/vishay/${cat.slug}`}
+                    href={`/topics/${cat.slug}`}
                     className="text-[15px] text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
                   >
                     {cat.name}
@@ -129,6 +129,30 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2.5 text-[15px] text-[var(--muted)]">
               <li>
+                <Link
+                  href="/contact"
+                  className="transition-colors hover:text-[var(--foreground)]"
+                >
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <a
+                  href={`mailto:${siteConfig.contact.email}`}
+                  className="font-english transition-colors hover:text-[var(--foreground)]"
+                >
+                  {siteConfig.contact.email}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`tel:${siteConfig.contact.phone}`}
+                  className="font-english transition-colors hover:text-[var(--foreground)]"
+                >
+                  {siteConfig.contact.phoneDisplay}
+                </a>
+              </li>
+              <li>
                 <a
                   href={siteConfig.social.whatsapp}
                   target="_blank"
@@ -137,22 +161,6 @@ export function Footer() {
                 >
                   WhatsApp
                 </a>
-              </li>
-              <li>
-                <a
-                  href={`mailto:${siteConfig.author.email}`}
-                  className="transition-colors hover:text-[var(--foreground)]"
-                >
-                  {siteConfig.author.email}
-                </a>
-              </li>
-              <li>
-                <Link
-                  href="/rss.xml"
-                  className="transition-colors hover:text-[var(--foreground)]"
-                >
-                  RSS Feed
-                </Link>
               </li>
             </ul>
           </div>

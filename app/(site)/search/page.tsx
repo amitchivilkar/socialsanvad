@@ -5,7 +5,7 @@ import SearchClient from "./search-client";
 export const metadata: Metadata = {
   title: "शोध",
   description: "Social Sanvad वर लेख, विषय आणि टॅग शोधा.",
-  alternates: { canonical: "/shodh" },
+  alternates: { canonical: "/search" },
   robots: { index: false, follow: true },
 };
 

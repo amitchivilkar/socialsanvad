@@ -114,7 +114,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
               {results.map((article) => (
                 <li key={article.slug}>
                   <Link
-                    href={`/lekha/${article.slug}`}
+                    href={`/articles/${article.slug}`}
                     onClick={close}
                     className={cn(
                       "block rounded-xl px-3 py-3 transition-colors hover:bg-[var(--secondary)]"

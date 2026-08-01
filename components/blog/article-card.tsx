@@ -25,7 +25,7 @@ export function ArticleCard({
         className="absolute bottom-0 left-0 top-0 w-[3px] rounded-full bg-[var(--primary)] first:top-0 group-first:top-0"
         aria-hidden
       />
-      <Link href={`/lekha/${article.slug}`} className="block">
+      <Link href={`/articles/${article.slug}`} className="block">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)] sm:text-sm">
           <span className="rounded-sm bg-[var(--primary-soft)] px-1.5 py-0.5 font-medium text-[var(--foreground)]">
             {getCategoryName(article.category)}

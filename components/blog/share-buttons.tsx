@@ -12,7 +12,7 @@ export function ShareButtons({
   slug: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const url = absoluteUrl(`/lekha/${slug}`);
+  const url = absoluteUrl(`/articles/${slug}`);
 
   async function copyLink() {
     try {

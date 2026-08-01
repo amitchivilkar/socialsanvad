@@ -36,7 +36,7 @@ export function PrevNextNav({
     >
       {prev ? (
         <Link
-          href={`/lekha/${prev.slug}`}
+          href={`/articles/${prev.slug}`}
           className="group rounded-2xl border border-[var(--border)] p-5 transition-colors hover:bg-[var(--secondary)]"
         >
           <p className="text-xs text-[var(--muted)]">← मागचा</p>
@@ -49,7 +49,7 @@ export function PrevNextNav({
       )}
       {next ? (
         <Link
-          href={`/lekha/${next.slug}`}
+          href={`/articles/${next.slug}`}
           className="group rounded-2xl border border-[var(--border)] p-5 text-right transition-colors hover:bg-[var(--secondary)]"
         >
           <p className="text-xs text-[var(--muted)]">पुढील →</p>

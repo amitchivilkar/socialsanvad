@@ -226,21 +226,21 @@ export function BuyEbookButton({
               <p className="text-center text-xs leading-relaxed text-[var(--muted)]">
                 By continuing you agree to our{" "}
                 <Link
-                  href="/niyam"
+                  href="/terms"
                   className="underline underline-offset-2 hover:text-[var(--foreground)]"
                 >
                   Terms
                 </Link>
                 ,{" "}
                 <Link
-                  href="/gopanita"
+                  href="/privacy"
                   className="underline underline-offset-2 hover:text-[var(--foreground)]"
                 >
                   Privacy
                 </Link>{" "}
                 and{" "}
                 <Link
-                  href="/paratava"
+                  href="/refunds"
                   className="underline underline-offset-2 hover:text-[var(--foreground)]"
                 >
                   Refund

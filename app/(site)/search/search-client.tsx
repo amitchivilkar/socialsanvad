@@ -92,7 +92,7 @@ export default function SearchClient() {
           {results.map((article) => (
             <li key={article.slug}>
               <Link
-                href={`/lekha/${article.slug}`}
+                href={`/articles/${article.slug}`}
                 className="block py-5 transition-colors hover:bg-[var(--secondary)]/50"
               >
                 <p className="text-xs text-[var(--muted)]">

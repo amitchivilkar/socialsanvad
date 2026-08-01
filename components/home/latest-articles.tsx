@@ -13,7 +13,7 @@ export function LatestArticles({ articles }: { articles: Article[] }) {
         <SectionHeading
           title="नवीन लेख"
           description="नवं काय लिहिलं आहे"
-          href="/lekha"
+          href="/articles"
           linkLabel="सगळे लेख"
         />
 

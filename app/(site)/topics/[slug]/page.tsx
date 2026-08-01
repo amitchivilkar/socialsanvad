@@ -22,7 +22,7 @@ export async function generateMetadata({
   return {
     title: category.name,
     description: category.description,
-    alternates: { canonical: `/vishay/${category.slug}` },
+    alternates: { canonical: `/topics/${category.slug}` },
   };
 }
 
@@ -43,7 +43,7 @@ export default async function CategoryPage({
         <Breadcrumbs
           items={[
             { label: "होमपेज", href: "/" },
-            { label: "विषय", href: "/vishay" },
+            { label: "विषय", href: "/topics" },
             { label: category.name },
           ]}
         />

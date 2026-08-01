@@ -19,7 +19,7 @@ export function AboutPreview() {
               {siteConfig.author.bio}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button href="/majhyabadal" variant="secondary">
+              <Button href="/about" variant="secondary">
                 अजून वाचा
               </Button>
               <a

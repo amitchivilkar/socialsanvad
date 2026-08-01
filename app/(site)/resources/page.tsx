@@ -12,7 +12,7 @@ import { Newsletter } from "@/components/home/newsletter";
 export const metadata: Metadata = {
   title: "साधने",
   description: "तयार प्रॉम्प्ट्स, टेम्पलेट्स आणि यादी — मोफत आणि कामाच्या.",
-  alternates: { canonical: "/sansadhane" },
+  alternates: { canonical: "/resources" },
 };
 
 const sections = [

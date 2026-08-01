@@ -8,7 +8,7 @@ const LEGAL_EMAIL = "socialsanvad@gmail.com";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: `How ${siteConfig.name} collects, uses, and protects your personal information.`,
-  alternates: { canonical: "/gopanita" },
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {
@@ -120,8 +120,8 @@ export default function PrivacyPage() {
       <section>
         <h2>9. Related policies</h2>
         <p className="mt-3">
-          Please also read our <Link href="/niyam">Terms & Conditions</Link> and{" "}
-          <Link href="/paratava">Payment & Refund Policy</Link>.
+          Please also read our <Link href="/terms">Terms & Conditions</Link> and{" "}
+          <Link href="/refunds">Payment & Refund Policy</Link>.
         </p>
       </section>
 

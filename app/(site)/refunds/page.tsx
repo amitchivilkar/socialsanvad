@@ -8,7 +8,7 @@ const LEGAL_EMAIL = "socialsanvad@gmail.com";
 export const metadata: Metadata = {
   title: "Payment & Refund Policy",
   description: `Payment, delivery, and refund rules for ${siteConfig.name} ebook purchases.`,
-  alternates: { canonical: "/paratava" },
+  alternates: { canonical: "/refunds" },
 };
 
 export default function RefundPage() {
@@ -132,8 +132,8 @@ export default function RefundPage() {
       <section>
         <h2>8. Related pages</h2>
         <p className="mt-3">
-          <Link href="/niyam">Terms & Conditions</Link> ·{" "}
-          <Link href="/gopanita">Privacy Policy</Link>
+          <Link href="/terms">Terms & Conditions</Link> ·{" "}
+          <Link href="/privacy">Privacy Policy</Link>
         </p>
       </section>
 

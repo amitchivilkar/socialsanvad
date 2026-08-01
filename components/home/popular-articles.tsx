@@ -19,7 +19,7 @@ export function PopularArticles({ articles }: { articles: Article[] }) {
           {articles.map((article, index) => (
             <li key={article.slug}>
               <Link
-                href={`/lekha/${article.slug}`}
+                href={`/articles/${article.slug}`}
                 className="group flex items-baseline gap-5 py-5 transition-colors sm:gap-8 sm:py-6"
               >
                 <span className="font-heading w-8 shrink-0 text-2xl font-semibold tabular-nums text-[var(--muted)] sm:text-3xl">

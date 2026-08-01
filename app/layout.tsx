@@ -102,7 +102,7 @@ const jsonLd = {
   },
   potentialAction: {
     "@type": "SearchAction",
-    target: `${siteConfig.url}/shodh?q={search_term_string}`,
+    target: `${siteConfig.url}/search?q={search_term_string}`,
     "query-input": "required name=search_term_string",
   },
 };

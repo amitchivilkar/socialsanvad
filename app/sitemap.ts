@@ -9,38 +9,42 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     "",
-    "/lekha",
-    "/vishay",
-    "/sansadhane",
-    "/majhyabadal",
-    "/shodh",
-    "/niyam",
-    "/gopanita",
-    "/paratava",
+    "/articles",
+    "/topics",
+    "/resources",
+    "/about",
+    "/contact",
+    "/search",
+    "/terms",
+    "/privacy",
+    "/refunds",
     "/ebook/karykartyachi-ai-diary",
   ].map((path) => ({
     url: `${base}${path}`,
     lastModified: now,
-    changeFrequency: path === "" || path === "/lekha" ? "daily" : "weekly",
+    changeFrequency: path === "" || path === "/articles" ? "daily" : "weekly",
     priority:
       path === ""
         ? 1
         : path.includes("ebook")
           ? 0.9
-          : path === "/niyam" || path === "/gopanita" || path === "/paratava"
-            ? 0.3
+          : path === "/terms" ||
+              path === "/privacy" ||
+              path === "/refunds" ||
+              path === "/contact"
+            ? 0.4
             : 0.8,
   }));
 
   const articleRoutes: MetadataRoute.Sitemap = getAllArticles().map((a) => ({
-    url: `${base}/lekha/${a.slug}`,
+    url: `${base}/articles/${a.slug}`,
     lastModified: new Date(a.updatedAt ?? a.publishedAt),
     changeFrequency: "monthly",
     priority: 0.7,
   }));
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
-    url: `${base}/vishay/${c.slug}`,
+    url: `${base}/topics/${c.slug}`,
     lastModified: now,
     changeFrequency: "weekly",
     priority: 0.6,

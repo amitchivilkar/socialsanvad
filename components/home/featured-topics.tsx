@@ -29,7 +29,7 @@ export function FeaturedTopics() {
         <SectionHeading
           title="विषय"
           description="तुम्हाला काय हवंय?"
-          href="/vishay"
+          href="/topics"
           linkLabel="सगळे विषय"
         />
 
@@ -50,7 +50,7 @@ export function FeaturedTopics() {
                 }}
               >
                 <Link
-                  href={`/vishay/${cat.slug}`}
+                  href={`/topics/${cat.slug}`}
                   className="group flex h-full gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5 transition-colors hover:border-[var(--foreground)]/20 hover:bg-[var(--secondary)]"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)] text-[var(--foreground)]">

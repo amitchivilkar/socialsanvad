@@ -21,15 +21,15 @@ export async function GET() {
     author: {
       name: siteConfig.author.name,
       email: siteConfig.author.email,
-      link: absoluteUrl("/majhyabadal"),
+      link: absoluteUrl("/about"),
     },
   });
 
   getAllArticles().forEach((article) => {
     feed.addItem({
       title: article.title,
-      id: absoluteUrl(`/lekha/${article.slug}`),
-      link: absoluteUrl(`/lekha/${article.slug}`),
+      id: absoluteUrl(`/articles/${article.slug}`),
+      link: absoluteUrl(`/articles/${article.slug}`),
       description: article.description,
       date: new Date(article.publishedAt),
       author: [{ name: article.author }],
