@@ -249,7 +249,7 @@ export default function EbookSalesPage() {
 
         <section className="mt-16 border-t border-[var(--border)] pt-14 text-center sm:mt-20">
           <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-            वेळ वाया नका. स्मार्ट वर्क सुरू करा.
+            वेळ वाया घालवू नका. स्मार्ट वर्क सुरू करा.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-base text-[var(--muted)] sm:text-lg">
             आजच {ebook.title} घ्या आणि तुमची डिजिटल सिस्टीम तयार करा.
