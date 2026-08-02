@@ -80,6 +80,16 @@ function tokenKey(token: string) {
   return `ss:token:${token}`;
 }
 
+function ordersIndexKey() {
+  return "ss:orders:index";
+}
+
+async function indexOrder(orderId: string) {
+  if (hasUpstash()) {
+    await upstash(["SADD", ordersIndexKey(), orderId]);
+  }
+}
+
 export async function savePendingOrder(input: {
   orderId: string;
   ebookSlug: string;
@@ -98,6 +108,7 @@ export async function savePendingOrder(input: {
 
   if (hasUpstash()) {
     await upstash(["SET", orderKey(record.orderId), JSON.stringify(record)]);
+    await indexOrder(record.orderId);
     return record;
   }
 
@@ -136,6 +147,7 @@ export async function getOrderByToken(
 async function writeOrder(record: OrderRecord) {
   if (hasUpstash()) {
     await upstash(["SET", orderKey(record.orderId), JSON.stringify(record)]);
+    await indexOrder(record.orderId);
     if (record.downloadToken) {
       await upstash(["SET", tokenKey(record.downloadToken), record.orderId]);
     }
@@ -148,6 +160,28 @@ async function writeOrder(record: OrderRecord) {
     store.tokens[record.downloadToken] = record.orderId;
   }
   await writeLocal(store);
+}
+
+export async function listOrders(): Promise<OrderRecord[]> {
+  if (hasUpstash()) {
+    const ids =
+      (await upstash<string[] | null>(["SMEMBERS", ordersIndexKey()])) || [];
+    const orders: OrderRecord[] = [];
+    for (const id of ids) {
+      const order = await getOrder(id);
+      if (order) orders.push(order);
+    }
+    return orders.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  const store = await readLocal();
+  return Object.values(store.orders).sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }
 
 export function createDownloadToken(): string {
