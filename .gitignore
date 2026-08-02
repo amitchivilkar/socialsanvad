@@ -37,6 +37,14 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local order store (dev)
+.data
+
+# private ebook PDFs (do not commit)
+/private/ebooks/*.pdf
+!/private/ebooks/.gitkeep
+!/private/ebooks/README.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

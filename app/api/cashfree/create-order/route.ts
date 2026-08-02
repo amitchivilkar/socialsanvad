@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createCashfreeOrder, isCashfreeConfigured } from "@/lib/cashfree";
 import { getEbook } from "@/lib/ebooks";
+import { savePendingOrder } from "@/lib/orders-store";
 import { siteConfig } from "@/lib/site";
 
 const bodySchema = z.object({
@@ -42,6 +43,13 @@ export async function POST(request: Request) {
     const base = siteConfig.url.replace(/\/$/, "");
     const returnUrl = `${base}/ebook/success?order_id=${orderId}`;
     const notifyUrl = `${base}/api/cashfree/webhook`;
+
+    await savePendingOrder({
+      orderId,
+      ebookSlug,
+      name: name.trim(),
+      phone: phone.trim(),
+    });
 
     const order = await createCashfreeOrder({
       orderId,
