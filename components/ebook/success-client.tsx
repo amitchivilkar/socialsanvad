@@ -22,6 +22,17 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
   useEffect(() => {
     if (!initiallyPaid || purchaseTracked.current) return;
     purchaseTracked.current = true;
+
+    const storageKey = orderId
+      ? `meta_purchase_${orderId}`
+      : "meta_purchase_unknown";
+
+    try {
+      if (sessionStorage.getItem(storageKey) === "1") return;
+    } catch {
+      /* ignore */
+    }
+
     trackMetaEvent("Purchase", {
       value: 125,
       currency: "INR",
@@ -30,6 +41,12 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
       content_type: "product",
       order_id: orderId,
     });
+
+    try {
+      sessionStorage.setItem(storageKey, "1");
+    } catch {
+      /* ignore */
+    }
   }, [initiallyPaid, orderId]);
 
   useEffect(() => {
