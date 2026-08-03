@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
+import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { siteConfig } from "@/lib/site";
 import "./globals.css";
@@ -123,6 +125,9 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <Suspense fallback={null}>
+          <MetaPixel />
+        </Suspense>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

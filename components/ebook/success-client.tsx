@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/lib/site";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 
 type Props = {
   orderId?: string;
@@ -16,6 +17,20 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
   const [whatsappSent, setWhatsappSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const purchaseTracked = useRef(false);
+
+  useEffect(() => {
+    if (!initiallyPaid || purchaseTracked.current) return;
+    purchaseTracked.current = true;
+    trackMetaEvent("Purchase", {
+      value: 125,
+      currency: "INR",
+      content_name: "कार्यकर्त्याची AI डायरी",
+      content_ids: ["karykartyachi-ai-diary"],
+      content_type: "product",
+      order_id: orderId,
+    });
+  }, [initiallyPaid, orderId]);
 
   useEffect(() => {
     if (!orderId || !initiallyPaid) return;

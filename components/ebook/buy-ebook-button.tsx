@@ -6,6 +6,7 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { load } from "@cashfreepayments/cashfree-js";
 import { Lock, MessageCircle, ShieldCheck, X } from "lucide-react";
 import { siteConfig } from "@/lib/site";
+import { trackMetaEvent } from "@/lib/meta-pixel";
 
 type Props = {
   ebookSlug: string;
@@ -86,7 +87,16 @@ export function BuyEbookButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          trackMetaEvent("InitiateCheckout", {
+            content_name: ebookTitle,
+            content_ids: [ebookSlug],
+            content_type: "product",
+            value: Number(priceLabel.replace(/[^\d.]/g, "")) || 125,
+            currency: "INR",
+          });
+        }}
         className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--foreground)] px-8 text-base font-medium text-[var(--background)] transition-opacity hover:opacity-90 sm:w-auto"
       >
         {ctaLabel} · {priceLabel}
