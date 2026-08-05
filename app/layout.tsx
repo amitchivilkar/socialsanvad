@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { siteConfig } from "@/lib/site";
@@ -126,6 +127,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <Suspense fallback={null}>
+          <GoogleAnalytics />
           <MetaPixel />
         </Suspense>
         <ThemeProvider>{children}</ThemeProvider>
