@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, LogOut, RefreshCw } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  LogOut,
+  MessageCircle,
+  RefreshCw,
+} from "lucide-react";
 
 type OrderRow = {
   orderId: string;
@@ -22,7 +29,9 @@ type OrderRow = {
 export default function AdminOrdersPage() {
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [booting, setBooting] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [paidCount, setPaidCount] = useState(0);
@@ -35,33 +44,43 @@ export default function AdminOrdersPage() {
   const [lastLink, setLastLink] = useState<{
     orderId: string;
     url: string;
+    name: string;
   } | null>(null);
 
   const loadOrders = useCallback(async () => {
     setError("");
-    const res = await fetch("/api/admin/orders", { cache: "no-store" });
+    const res = await fetch("/api/admin/orders", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
     if (res.status === 401) {
       setAuthed(false);
       setOrders([]);
-      return;
+      setPaidCount(0);
+      return false;
     }
     if (!res.ok) {
-      setError("Orders load failed");
-      return;
+      setError("Orders load failed. Try Refresh again.");
+      return false;
     }
     const data = await res.json();
     setAuthed(true);
     setOrders(data.orders || []);
     setPaidCount(data.paid || 0);
     setMaxDownloads(data.maxDownloads || 5);
+    return true;
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      setLoading(true);
+      setBooting(true);
       await loadOrders();
-      setLoading(false);
+      if (!cancelled) setBooting(false);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadOrders]);
 
   async function onLogin(e: React.FormEvent) {
@@ -70,28 +89,57 @@ export default function AdminOrdersPage() {
     const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ password }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Login failed");
+      setError(data.error || "Wrong password");
       return;
     }
     setPassword("");
-    setLoading(true);
+    setBooting(true);
     await loadOrders();
-    setLoading(false);
+    setBooting(false);
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+    setError("");
+    try {
+      await loadOrders();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function onLogout() {
-    await fetch("/api/admin/login", { method: "DELETE" });
-    setAuthed(false);
-    setOrders([]);
-    setLastLink(null);
+    setLoggingOut(true);
+    setError("");
+    try {
+      await fetch("/api/admin/login", {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      setAuthed(false);
+      setOrders([]);
+      setPaidCount(0);
+      setLastLink(null);
+      setPassword("");
+    } catch {
+      setError("Logout failed — try again.");
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
-  async function copyText(orderId: string, url: string, action: "copy" | "renew") {
-    setLastLink({ orderId, url });
+  async function copyText(
+    orderId: string,
+    url: string,
+    name: string,
+    action: "copy" | "renew"
+  ) {
+    setLastLink({ orderId, url, name });
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(orderId);
@@ -101,26 +149,27 @@ export default function AdminOrdersPage() {
         setCopiedAction(null);
       }, 2000);
     } catch {
-      /* link still shown in banner */
+      /* banner still shows URL */
     }
   }
 
   async function onCopyLink(o: OrderRow) {
     setError("");
     if (!o.downloadUrl) {
-      setError("No download link yet — use Renew link first.");
+      setError("No download link — click Renew first.");
       return;
     }
-    await copyText(o.orderId, o.downloadUrl, "copy");
+    await copyText(o.orderId, o.downloadUrl, o.name, "copy");
   }
 
-  async function onRenew(orderId: string) {
+  async function onRenew(orderId: string, name: string) {
     setError("");
     setRenewingId(orderId);
     try {
       const res = await fetch("/api/admin/orders/renew", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ orderId }),
       });
       const data = await res.json();
@@ -128,7 +177,7 @@ export default function AdminOrdersPage() {
         setError(data.error || "Renew failed");
         return;
       }
-      await copyText(orderId, data.downloadUrl, "renew");
+      await copyText(orderId, data.downloadUrl, name, "renew");
       await loadOrders();
     } catch {
       setError("Renew failed");
@@ -142,42 +191,55 @@ export default function AdminOrdersPage() {
     return new Date(o.downloadExpiresAt).getTime() < Date.now();
   }
 
-  if (loading) {
+  if (booting) {
     return (
       <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-5">
-        <p className="text-sm text-[var(--muted)]">Loading…</p>
+        <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+          Loading admin…
+        </div>
       </div>
     );
   }
 
   if (!authed) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5">
-        <h1 className="font-heading text-2xl font-semibold">Admin login</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Ebook orders — password required
-        </p>
-        <form onSubmit={onLogin} className="mt-8 space-y-4">
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Admin password"
-            className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 outline-none focus:border-[var(--foreground)]"
-          />
-          {error ? (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--foreground)] text-sm font-medium text-[var(--background)]"
-          >
-            Login
-          </button>
-        </form>
+      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background)] p-8 shadow-sm">
+          <div className="mb-6 h-1.5 w-12 rounded-full bg-[var(--primary)]" />
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Admin
+          </h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Ebook orders — password required
+          </p>
+          <form onSubmit={onLogin} className="mt-8 space-y-4">
+            <label className="block text-sm font-medium" htmlFor="admin-pass">
+              Password
+            </label>
+            <input
+              id="admin-pass"
+              type="password"
+              required
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Admin password"
+              className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
+            />
+            {error ? (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--foreground)] text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90"
+            >
+              Login
+            </button>
+          </form>
+        </div>
         <Link
           href="/"
           className="mt-6 text-center text-sm text-[var(--muted)] underline-offset-4 hover:underline"
@@ -189,66 +251,113 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-6xl px-5 py-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="mx-auto min-h-screen max-w-6xl px-5 py-8 sm:py-10">
+      {/* Top bar */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+            Social Sanvad
+          </p>
+          <h1 className="font-heading mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
             Ebook orders
           </h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {orders.length} total · {paidCount} paid
-          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => loadOrders()}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-sm"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-medium transition-colors hover:bg-[var(--secondary)] disabled:cursor-wait disabled:opacity-60"
           >
-            <RefreshCw className="h-4 w-4" strokeWidth={1.75} />
-            Refresh
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              strokeWidth={1.75}
+            />
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
           <button
             type="button"
             onClick={onLogout}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-sm"
+            disabled={loggingOut}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" strokeWidth={1.75} />
-            Logout
+            {loggingOut ? "Logging out…" : "Logout"}
           </button>
+        </div>
+      </header>
+
+      {/* Stats */}
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+          <p className="text-xs font-medium text-[var(--muted)]">Total orders</p>
+          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
+            {orders.length}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+          <p className="text-xs font-medium text-[var(--muted)]">Paid</p>
+          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums text-emerald-700">
+            {paidCount}
+          </p>
+        </div>
+        <div className="col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 sm:col-span-1">
+          <p className="text-xs font-medium text-[var(--muted)]">
+            Download limit
+          </p>
+          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
+            {maxDownloads}
+            <span className="text-base font-normal text-[var(--muted)]">
+              {" "}
+              / link
+            </span>
+          </p>
         </div>
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-600">{error}</p>
-      ) : null}
-
-      {lastLink ? (
-        <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm">
-          <p className="font-medium text-[var(--foreground)]">
-            Link ready (copied if clipboard allowed)
-          </p>
-          <p className="font-english mt-1 break-all text-[var(--muted)]">
-            {lastLink.url}
-          </p>
-          <p className="mt-2 text-xs text-[var(--muted)]">
-            WhatsApp वर customer ला paste करा. Renew केल्यास जुनी लिंक बंद होते.
-          </p>
+        <div
+          className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          role="alert"
+        >
+          {error}
         </div>
       ) : null}
 
-      <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--background)]">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="border-b border-[var(--border)] bg-[var(--secondary)]/50 text-xs uppercase tracking-wide text-[var(--muted)]">
+      {lastLink ? (
+        <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+                Copied for {lastLink.name}
+              </p>
+              <p className="font-english mt-2 break-all text-sm text-[var(--foreground)]">
+                {lastLink.url}
+              </p>
+            </div>
+            <a
+              href={`https://wa.me/91${orders.find((x) => x.orderId === lastLink.orderId)?.phone || ""}?text=${encodeURIComponent(`नमस्कार ${lastLink.name}, तुमची ebook download लिंक:\n${lastLink.url}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[var(--foreground)] px-3.5 text-xs font-medium text-[var(--background)]"
+            >
+              <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+              WhatsApp
+            </a>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Desktop table */}
+      <div className="mt-8 hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] lg:block">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-xs uppercase tracking-wide text-[var(--muted)]">
             <tr>
-              <th className="px-4 py-3 font-medium">Date</th>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Phone</th>
+              <th className="px-4 py-3 font-medium">Customer</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Downloads</th>
               <th className="px-4 py-3 font-medium">Expiry</th>
-              <th className="px-4 py-3 font-medium">Order ID</th>
-              <th className="px-4 py-3 font-medium">Download link</th>
+              <th className="px-4 py-3 font-medium">Link</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
@@ -256,10 +365,10 @@ export default function AdminOrdersPage() {
             {orders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
-                  className="px-4 py-10 text-center text-[var(--muted)]"
+                  colSpan={6}
+                  className="px-4 py-14 text-center text-[var(--muted)]"
                 >
-                  No orders yet. New checkouts will appear here.
+                  No orders yet.
                 </td>
               </tr>
             ) : (
@@ -268,119 +377,53 @@ export default function AdminOrdersPage() {
                   key={o.orderId}
                   className="border-b border-[var(--border)] last:border-0"
                 >
-                  <td className="font-english whitespace-nowrap px-4 py-3 text-[var(--muted)]">
-                    {new Date(o.paidAt || o.createdAt).toLocaleString("en-IN", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </td>
-                  <td className="px-4 py-3 font-medium">{o.name}</td>
-                  <td className="font-english px-4 py-3">
+                  <td className="px-4 py-4">
+                    <p className="font-medium">{o.name}</p>
                     <a
                       href={`https://wa.me/91${o.phone}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline-offset-2 hover:underline"
+                      className="font-english mt-0.5 inline-block text-xs text-[var(--muted)] underline-offset-2 hover:underline"
                     >
                       {o.phone}
                     </a>
+                    <p className="font-english mt-1 text-[11px] text-[var(--muted)]">
+                      {new Date(o.paidAt || o.createdAt).toLocaleString(
+                        "en-IN",
+                        { dateStyle: "medium", timeStyle: "short" }
+                      )}
+                    </p>
                   </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={
-                        o.status === "paid"
-                          ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                          : "rounded-full bg-[var(--secondary)] px-2 py-0.5 text-xs font-medium text-[var(--muted)]"
-                      }
-                    >
-                      {o.status}
-                    </span>
+                  <td className="px-4 py-4">
+                    <StatusBadge status={o.status} />
                   </td>
-                  <td className="font-english px-4 py-3 tabular-nums">
+                  <td className="font-english px-4 py-4 tabular-nums">
                     {o.downloadCount}/{maxDownloads}
                   </td>
-                  <td className="font-english whitespace-nowrap px-4 py-3 text-xs text-[var(--muted)]">
-                    {o.downloadExpiresAt ? (
-                      <span
-                        className={
-                          isExpired(o) ? "font-medium text-red-600" : undefined
-                        }
-                      >
-                        {isExpired(o) ? "Expired · " : ""}
-                        {new Date(o.downloadExpiresAt).toLocaleString("en-IN", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
+                  <td className="px-4 py-4 text-xs">
+                    <ExpiryCell order={o} expired={isExpired(o)} />
                   </td>
-                  <td className="font-english max-w-[140px] truncate px-4 py-3 text-xs text-[var(--muted)]">
-                    {o.orderId}
-                  </td>
-                  <td className="max-w-[200px] px-4 py-3">
+                  <td className="max-w-[180px] px-4 py-4">
                     {o.downloadUrl ? (
                       <p
                         className="font-english truncate text-xs text-[var(--muted)]"
                         title={o.downloadUrl}
                       >
-                        {o.downloadUrl.replace(/^https?:\/\//, "")}
+                        …/{o.downloadToken?.slice(-8)}
                       </p>
                     ) : (
                       <span className="text-xs text-[var(--muted)]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    {o.status === "paid" ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          disabled={!o.downloadUrl}
-                          onClick={() => onCopyLink(o)}
-                          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-40"
-                        >
-                          {copiedId === o.orderId && copiedAction === "copy" ? (
-                            <>
-                              <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-                              Copy
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={renewingId === o.orderId}
-                          onClick={() => onRenew(o.orderId)}
-                          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
-                        >
-                          {copiedId === o.orderId &&
-                          copiedAction === "renew" ? (
-                            <>
-                              <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
-                              Copied
-                            </>
-                          ) : renewingId === o.orderId ? (
-                            <RefreshCw
-                              className="h-3.5 w-3.5 animate-spin"
-                              strokeWidth={1.75}
-                            />
-                          ) : (
-                            <RefreshCw
-                              className="h-3.5 w-3.5"
-                              strokeWidth={1.75}
-                            />
-                          )}
-                          Renew
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-[var(--muted)]">—</span>
-                    )}
+                  <td className="px-4 py-4">
+                    <ActionButtons
+                      order={o}
+                      renewing={renewingId === o.orderId}
+                      copiedId={copiedId}
+                      copiedAction={copiedAction}
+                      onCopy={() => onCopyLink(o)}
+                      onRenew={() => onRenew(o.orderId, o.name)}
+                    />
                   </td>
                 </tr>
               ))
@@ -389,10 +432,178 @@ export default function AdminOrdersPage() {
         </table>
       </div>
 
-      <p className="mt-4 text-xs text-[var(--muted)]">
-        <strong>Copy</strong> = current link. <strong>Renew</strong> = new link,
-        72h expiry, downloads 0/5; old link stops working.
+      {/* Mobile cards */}
+      <div className="mt-6 space-y-3 lg:hidden">
+        {orders.length === 0 ? (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-10 text-center text-sm text-[var(--muted)]">
+            No orders yet.
+          </div>
+        ) : (
+          orders.map((o) => (
+            <article
+              key={o.orderId}
+              className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium">{o.name}</p>
+                  <a
+                    href={`https://wa.me/91${o.phone}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-english text-sm text-[var(--muted)] underline-offset-2 hover:underline"
+                  >
+                    {o.phone}
+                  </a>
+                </div>
+                <StatusBadge status={o.status} />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
+                <p>
+                  Downloads:{" "}
+                  <span className="font-english text-[var(--foreground)]">
+                    {o.downloadCount}/{maxDownloads}
+                  </span>
+                </p>
+                <ExpiryCell order={o} expired={isExpired(o)} />
+              </div>
+              {o.downloadUrl ? (
+                <p className="font-english mt-2 truncate text-[11px] text-[var(--muted)]">
+                  {o.downloadUrl}
+                </p>
+              ) : null}
+              <div className="mt-3">
+                <ActionButtons
+                  order={o}
+                  renewing={renewingId === o.orderId}
+                  copiedId={copiedId}
+                  copiedAction={copiedAction}
+                  onCopy={() => onCopyLink(o)}
+                  onRenew={() => onRenew(o.orderId, o.name)}
+                />
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <p className="mt-6 text-xs leading-relaxed text-[var(--muted)]">
+        <strong className="text-[var(--foreground)]">Copy</strong> = current
+        link.{" "}
+        <strong className="text-[var(--foreground)]">Renew</strong> = new 72h
+        link, downloads reset; old link stops.
       </p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const paid = status === "paid";
+  return (
+    <span
+      className={
+        paid
+          ? "inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800"
+          : "inline-flex rounded-full bg-[var(--secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--muted)]"
+      }
+    >
+      {status}
+    </span>
+  );
+}
+
+function ExpiryCell({
+  order,
+  expired,
+}: {
+  order: OrderRow;
+  expired: boolean;
+}) {
+  if (!order.downloadExpiresAt) {
+    return <span className="text-[var(--muted)]">—</span>;
+  }
+  return (
+    <span className={expired ? "font-medium text-red-600" : "text-[var(--muted)]"}>
+      {expired ? "Expired · " : ""}
+      {new Date(order.downloadExpiresAt).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })}
+    </span>
+  );
+}
+
+function ActionButtons({
+  order,
+  renewing,
+  copiedId,
+  copiedAction,
+  onCopy,
+  onRenew,
+}: {
+  order: OrderRow;
+  renewing: boolean;
+  copiedId: string | null;
+  copiedAction: "copy" | "renew" | null;
+  onCopy: () => void;
+  onRenew: () => void;
+}) {
+  if (order.status !== "paid") {
+    return <span className="text-xs text-[var(--muted)]">—</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <button
+        type="button"
+        disabled={!order.downloadUrl}
+        onClick={onCopy}
+        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-40"
+      >
+        {copiedId === order.orderId && copiedAction === "copy" ? (
+          <>
+            <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Copied
+          </>
+        ) : (
+          <>
+            <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Copy
+          </>
+        )}
+      </button>
+      <button
+        type="button"
+        disabled={renewing}
+        onClick={onRenew}
+        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+      >
+        {copiedId === order.orderId && copiedAction === "renew" ? (
+          <>
+            <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Copied
+          </>
+        ) : (
+          <>
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${renewing ? "animate-spin" : ""}`}
+              strokeWidth={1.75}
+            />
+            Renew
+          </>
+        )}
+      </button>
+      {order.downloadUrl ? (
+        <a
+          href={order.downloadUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)]"
+        >
+          <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+          Open
+        </a>
+      ) : null}
     </div>
   );
 }
