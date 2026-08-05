@@ -144,8 +144,11 @@ export async function getOrderByToken(
   return store.orders[orderId] ?? null;
 }
 
-async function writeOrder(record: OrderRecord) {
+async function writeOrder(record: OrderRecord, previousToken?: string) {
   if (hasUpstash()) {
+    if (previousToken && previousToken !== record.downloadToken) {
+      await upstash(["DEL", tokenKey(previousToken)]);
+    }
     await upstash(["SET", orderKey(record.orderId), JSON.stringify(record)]);
     await indexOrder(record.orderId);
     if (record.downloadToken) {
@@ -155,6 +158,9 @@ async function writeOrder(record: OrderRecord) {
   }
 
   const store = await readLocal();
+  if (previousToken && previousToken !== record.downloadToken) {
+    delete store.tokens[previousToken];
+  }
   store.orders[record.orderId] = record;
   if (record.downloadToken) {
     store.tokens[record.downloadToken] = record.orderId;
@@ -211,6 +217,30 @@ export async function markOrderPaidAndIssueToken(
 
   await writeOrder(updated);
   return updated;
+}
+
+/**
+ * Issue a fresh download link: new token, +72h expiry, download count reset to 0.
+ * Old token stops working.
+ */
+export async function renewDownloadLink(
+  orderId: string
+): Promise<{ order: OrderRecord; downloadUrl: string } | null> {
+  const existing = await getOrder(orderId);
+  if (!existing) return null;
+  if (existing.status !== "paid") return null;
+
+  const previousToken = existing.downloadToken;
+  const token = createDownloadToken();
+  const updated: OrderRecord = {
+    ...existing,
+    downloadToken: token,
+    downloadCount: 0,
+    downloadExpiresAt: new Date(Date.now() + DOWNLOAD_TTL_MS).toISOString(),
+  };
+
+  await writeOrder(updated, previousToken);
+  return { order: updated, downloadUrl: getDownloadUrl(token) };
 }
 
 export async function markWhatsappSent(orderId: string): Promise<void> {
