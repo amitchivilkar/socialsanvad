@@ -2,13 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { trackGaPageView } from "@/lib/google-analytics";
+import { trackGtmPageView } from "@/lib/gtm";
 
 /**
- * Sends page_view on client-side route changes (App Router).
- * Initial pageview is handled by gtag('config').
+ * Pushes virtual_page_view on client-side route changes.
+ * In GTM: trigger = Custom Event "virtual_page_view" → GA4 page_view (or GA4 Config).
+ * Initial load is covered by GTM All Pages + GA4 Configuration tag.
  */
-export function GoogleAnalyticsPageView() {
+export function GtmPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const first = useRef(true);
@@ -19,7 +20,7 @@ export function GoogleAnalyticsPageView() {
       return;
     }
     const qs = searchParams?.toString();
-    trackGaPageView(qs ? `${pathname}?${qs}` : pathname);
+    trackGtmPageView(qs ? `${pathname}?${qs}` : pathname);
   }, [pathname, searchParams]);
 
   return null;

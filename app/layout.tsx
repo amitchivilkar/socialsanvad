@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
-import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import {
+  GoogleTagManager,
+  GoogleTagManagerNoscript,
+} from "@/components/analytics/google-tag-manager";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { siteConfig } from "@/lib/site";
@@ -122,12 +125,13 @@ export default function RootLayout({
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
+        <GoogleTagManagerNoscript />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <Suspense fallback={null}>
-          <GoogleAnalytics />
+          <GoogleTagManager />
           <MetaPixel />
         </Suspense>
         <ThemeProvider>{children}</ThemeProvider>
