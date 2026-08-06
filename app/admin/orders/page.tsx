@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -9,6 +9,7 @@ import {
   LogOut,
   MessageCircle,
   RefreshCw,
+  Search,
 } from "lucide-react";
 
 type OrderRow = {
@@ -33,10 +34,13 @@ export default function AdminOrdersPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [paidCount, setPaidCount] = useState(0);
   const [maxDownloads, setMaxDownloads] = useState(5);
+  const [query, setQuery] = useState("");
   const [renewingId, setRenewingId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAction, setCopiedAction] = useState<"copy" | "renew" | null>(
     null
@@ -83,6 +87,19 @@ export default function AdminOrdersPage() {
     };
   }, [loadOrders]);
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return orders;
+    const digits = q.replace(/\D/g, "");
+    return orders.filter((o) => {
+      if (o.name.toLowerCase().includes(q)) return true;
+      if (o.orderId.toLowerCase().includes(q)) return true;
+      if (o.phone.toLowerCase().includes(q)) return true;
+      if (digits && o.phone.replace(/\D/g, "").includes(digits)) return true;
+      return false;
+    });
+  }, [orders, query]);
+
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -106,6 +123,7 @@ export default function AdminOrdersPage() {
   async function onRefresh() {
     setRefreshing(true);
     setError("");
+    setSuccess("");
     try {
       await loadOrders();
     } finally {
@@ -126,6 +144,7 @@ export default function AdminOrdersPage() {
       setPaidCount(0);
       setLastLink(null);
       setPassword("");
+      setQuery("");
     } catch {
       setError("Logout failed — try again.");
     } finally {
@@ -155,6 +174,7 @@ export default function AdminOrdersPage() {
 
   async function onCopyLink(o: OrderRow) {
     setError("");
+    setSuccess("");
     if (!o.downloadUrl) {
       setError("No download link — click Renew first.");
       return;
@@ -164,6 +184,7 @@ export default function AdminOrdersPage() {
 
   async function onRenew(orderId: string, name: string) {
     setError("");
+    setSuccess("");
     setRenewingId(orderId);
     try {
       const res = await fetch("/api/admin/orders/renew", {
@@ -186,9 +207,50 @@ export default function AdminOrdersPage() {
     }
   }
 
+  async function onWhatsAppSend(o: OrderRow) {
+    setError("");
+    setSuccess("");
+    setSendingId(o.orderId);
+    try {
+      const res = await fetch("/api/admin/orders/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ orderId: o.orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "WhatsApp send failed");
+        return;
+      }
+      setSuccess(
+        data.renewed
+          ? `WhatsApp sent to ${o.name} (new link issued).`
+          : `WhatsApp sent to ${o.name}.`
+      );
+      if (data.downloadUrl) {
+        setLastLink({
+          orderId: o.orderId,
+          url: data.downloadUrl,
+          name: o.name,
+        });
+      }
+      await loadOrders();
+    } catch {
+      setError("WhatsApp send failed");
+    } finally {
+      setSendingId(null);
+    }
+  }
+
   function isExpired(o: OrderRow) {
     if (!o.downloadExpiresAt) return false;
     return new Date(o.downloadExpiresAt).getTime() < Date.now();
+  }
+
+  function waPhone(phone: string) {
+    const digits = phone.replace(/\D/g, "");
+    return digits.length === 10 ? `91${digits}` : digits;
   }
 
   if (booting) {
@@ -252,7 +314,6 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-6xl px-5 py-8 sm:py-10">
-      {/* Top bar */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
@@ -287,7 +348,6 @@ export default function AdminOrdersPage() {
         </div>
       </header>
 
-      {/* Stats */}
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
           <p className="text-xs font-medium text-[var(--muted)]">Total orders</p>
@@ -315,6 +375,26 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
+      <div className="relative mt-6">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
+          strokeWidth={1.75}
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, phone, or order ID…"
+          className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] pl-11 pr-4 text-sm outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
+          aria-label="Search orders"
+        />
+        {query.trim() ? (
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            Showing {filtered.length} of {orders.length}
+          </p>
+        ) : null}
+      </div>
+
       {error ? (
         <div
           className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -324,31 +404,39 @@ export default function AdminOrdersPage() {
         </div>
       ) : null}
 
+      {success ? (
+        <div
+          className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          role="status"
+        >
+          {success}
+        </div>
+      ) : null}
+
       {lastLink ? (
         <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
-                Copied for {lastLink.name}
+                Link for {lastLink.name}
               </p>
               <p className="font-english mt-2 break-all text-sm text-[var(--foreground)]">
                 {lastLink.url}
               </p>
             </div>
             <a
-              href={`https://wa.me/91${orders.find((x) => x.orderId === lastLink.orderId)?.phone || ""}?text=${encodeURIComponent(`नमस्कार ${lastLink.name}, तुमची ebook download लिंक:\n${lastLink.url}`)}`}
+              href={`https://wa.me/${waPhone(orders.find((x) => x.orderId === lastLink.orderId)?.phone || "")}?text=${encodeURIComponent(`नमस्कार ${lastLink.name}, तुमची ebook download लिंक:\n${lastLink.url}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[var(--foreground)] px-3.5 text-xs font-medium text-[var(--background)]"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] px-3.5 text-xs font-medium hover:bg-[var(--secondary)]"
             >
               <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
-              WhatsApp
+              Open chat
             </a>
           </div>
         </div>
       ) : null}
 
-      {/* Desktop table */}
       <div className="mt-8 hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] lg:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -362,37 +450,49 @@ export default function AdminOrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.length === 0 ? (
+            {filtered.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
                   className="px-4 py-14 text-center text-[var(--muted)]"
                 >
-                  No orders yet.
+                  {orders.length === 0
+                    ? "No orders yet."
+                    : "No matching orders."}
                 </td>
               </tr>
             ) : (
-              orders.map((o) => (
+              filtered.map((o) => (
                 <tr
                   key={o.orderId}
                   className="border-b border-[var(--border)] last:border-0"
                 >
                   <td className="px-4 py-4">
                     <p className="font-medium">{o.name}</p>
-                    <a
-                      href={`https://wa.me/91${o.phone}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-english mt-0.5 inline-block text-xs text-[var(--muted)] underline-offset-2 hover:underline"
-                    >
+                    <p className="font-english mt-0.5 text-xs text-[var(--muted)]">
                       {o.phone}
-                    </a>
+                    </p>
+                    <p
+                      className="font-english mt-1 max-w-[200px] truncate text-[11px] text-[var(--muted)]"
+                      title={o.orderId}
+                    >
+                      {o.orderId}
+                    </p>
                     <p className="font-english mt-1 text-[11px] text-[var(--muted)]">
                       {new Date(o.paidAt || o.createdAt).toLocaleString(
                         "en-IN",
                         { dateStyle: "medium", timeStyle: "short" }
                       )}
                     </p>
+                    {o.whatsappSentAt ? (
+                      <p className="mt-1 text-[11px] text-emerald-700">
+                        WA sent{" "}
+                        {new Date(o.whatsappSentAt).toLocaleString("en-IN", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-4 py-4">
                     <StatusBadge status={o.status} />
@@ -419,10 +519,12 @@ export default function AdminOrdersPage() {
                     <ActionButtons
                       order={o}
                       renewing={renewingId === o.orderId}
+                      sending={sendingId === o.orderId}
                       copiedId={copiedId}
                       copiedAction={copiedAction}
                       onCopy={() => onCopyLink(o)}
                       onRenew={() => onRenew(o.orderId, o.name)}
+                      onWhatsApp={() => onWhatsAppSend(o)}
                     />
                   </td>
                 </tr>
@@ -432,14 +534,13 @@ export default function AdminOrdersPage() {
         </table>
       </div>
 
-      {/* Mobile cards */}
       <div className="mt-6 space-y-3 lg:hidden">
-        {orders.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-10 text-center text-sm text-[var(--muted)]">
-            No orders yet.
+            {orders.length === 0 ? "No orders yet." : "No matching orders."}
           </div>
         ) : (
-          orders.map((o) => (
+          filtered.map((o) => (
             <article
               key={o.orderId}
               className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4"
@@ -447,14 +548,12 @@ export default function AdminOrdersPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">{o.name}</p>
-                  <a
-                    href={`https://wa.me/91${o.phone}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-english text-sm text-[var(--muted)] underline-offset-2 hover:underline"
-                  >
+                  <p className="font-english text-sm text-[var(--muted)]">
                     {o.phone}
-                  </a>
+                  </p>
+                  <p className="font-english mt-1 break-all text-[11px] text-[var(--muted)]">
+                    {o.orderId}
+                  </p>
                 </div>
                 <StatusBadge status={o.status} />
               </div>
@@ -476,10 +575,12 @@ export default function AdminOrdersPage() {
                 <ActionButtons
                   order={o}
                   renewing={renewingId === o.orderId}
+                  sending={sendingId === o.orderId}
                   copiedId={copiedId}
                   copiedAction={copiedAction}
                   onCopy={() => onCopyLink(o)}
                   onRenew={() => onRenew(o.orderId, o.name)}
+                  onWhatsApp={() => onWhatsAppSend(o)}
                 />
               </div>
             </article>
@@ -488,10 +589,10 @@ export default function AdminOrdersPage() {
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-[var(--muted)]">
-        <strong className="text-[var(--foreground)]">Copy</strong> = current
-        link.{" "}
-        <strong className="text-[var(--foreground)]">Renew</strong> = new 72h
-        link, downloads reset; old link stops.
+        <strong className="text-[var(--foreground)]">WhatsApp</strong> = MSG91
+        template (renews link if expired).{" "}
+        <strong className="text-[var(--foreground)]">Copy</strong> /{" "}
+        <strong className="text-[var(--foreground)]">Renew</strong> as before.
       </p>
     </div>
   );
@@ -523,7 +624,9 @@ function ExpiryCell({
     return <span className="text-[var(--muted)]">—</span>;
   }
   return (
-    <span className={expired ? "font-medium text-red-600" : "text-[var(--muted)]"}>
+    <span
+      className={expired ? "font-medium text-red-600" : "text-[var(--muted)]"}
+    >
       {expired ? "Expired · " : ""}
       {new Date(order.downloadExpiresAt).toLocaleString("en-IN", {
         dateStyle: "medium",
@@ -536,17 +639,21 @@ function ExpiryCell({
 function ActionButtons({
   order,
   renewing,
+  sending,
   copiedId,
   copiedAction,
   onCopy,
   onRenew,
+  onWhatsApp,
 }: {
   order: OrderRow;
   renewing: boolean;
+  sending: boolean;
   copiedId: string | null;
   copiedAction: "copy" | "renew" | null;
   onCopy: () => void;
   onRenew: () => void;
+  onWhatsApp: () => void;
 }) {
   if (order.status !== "paid") {
     return <span className="text-xs text-[var(--muted)]">—</span>;
@@ -554,6 +661,18 @@ function ActionButtons({
 
   return (
     <div className="flex flex-wrap gap-1.5">
+      <button
+        type="button"
+        disabled={sending || renewing}
+        onClick={onWhatsApp}
+        className="inline-flex items-center gap-1 rounded-full bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        <MessageCircle
+          className={`h-3.5 w-3.5 ${sending ? "animate-pulse" : ""}`}
+          strokeWidth={1.75}
+        />
+        {sending ? "Sending…" : "WhatsApp"}
+      </button>
       <button
         type="button"
         disabled={!order.downloadUrl}
@@ -574,7 +693,7 @@ function ActionButtons({
       </button>
       <button
         type="button"
-        disabled={renewing}
+        disabled={renewing || sending}
         onClick={onRenew}
         className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
       >
