@@ -37,6 +37,9 @@ export async function generateMetadata({
   const title = article.seo?.title ?? article.title;
   const description = article.seo?.description ?? article.description;
   const url = absoluteUrl(`/articles/${article.slug}`);
+  const ogImagePath = article.ogImage || "/images/logo.png";
+  const ogImageAbsolute = absoluteUrl(ogImagePath);
+  const hasCustomOg = Boolean(article.ogImage);
 
   return {
     title,
@@ -51,13 +54,20 @@ export async function generateMetadata({
       publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt ?? article.publishedAt,
       authors: [article.author],
-      images: [{ url: "/images/logo.png", width: 306, height: 226, alt: siteConfig.name }],
+      images: [
+        {
+          url: ogImagePath,
+          width: hasCustomOg ? 1200 : 306,
+          height: hasCustomOg ? 630 : 226,
+          alt: title,
+        },
+      ],
     },
     twitter: {
-      card: "summary",
+      card: hasCustomOg ? "summary_large_image" : "summary",
       title,
       description,
-      images: ["/images/logo.png"],
+      images: [ogImageAbsolute],
     },
     alternates: { canonical: url },
   };
@@ -83,6 +93,7 @@ export default async function ArticlePage({
     description: article.description,
     datePublished: article.publishedAt,
     dateModified: article.updatedAt ?? article.publishedAt,
+    image: article.ogImage ? absoluteUrl(article.ogImage) : undefined,
     author: {
       "@type": "Person",
       name: article.author,

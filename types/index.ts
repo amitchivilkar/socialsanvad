@@ -29,6 +29,8 @@ export interface ArticleFrontmatter {
   author: string;
   publishedAt: string;
   updatedAt?: string;
+  /** Social share / Open Graph only — not shown in article body */
+  ogImage?: string;
   featured?: boolean;
   popular?: boolean;
   draft?: boolean;
