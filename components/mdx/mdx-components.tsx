@@ -1,4 +1,5 @@
 import type { MDXComponents } from "mdx/types";
+import { CopyablePre } from "@/components/mdx/copyable-pre";
 
 export const mdxComponents: MDXComponents = {
   h2: ({ children, id, ...props }) => (
@@ -97,14 +98,7 @@ export const mdxComponents: MDXComponents = {
       {children}
     </td>
   ),
-  pre: ({ children, ...props }) => (
-    <pre
-      className="my-8 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--secondary)] p-4 font-mono text-sm leading-relaxed"
-      {...props}
-    >
-      {children}
-    </pre>
-  ),
+  pre: (props) => <CopyablePre {...props} />,
   code: ({ children, className, ...props }) => {
     const isBlock =
       className?.includes("language-") || className?.includes("code-highlight");
