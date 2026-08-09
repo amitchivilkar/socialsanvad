@@ -14,7 +14,7 @@ const SLUG = "karykartyachi-ai-diary";
 
 /** Easy to update as sales grow */
 const SOCIAL_PROOF_TEXT =
-  "आतापर्यंत शेकडा कार्यकर्त्यांनी ही डायरी घेतली आहे";
+  "आतापर्यंत शेकडो कार्यकर्त्यांनी ही डायरी घेतली आहे";
 
 /** Display-only compare-at price (checkout still uses ebook.priceInr) */
 const COMPARE_AT_PRICE_INR = 299;
