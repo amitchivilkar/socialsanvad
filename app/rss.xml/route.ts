@@ -13,7 +13,7 @@ export async function GET() {
     link: siteConfig.url,
     language: "mr",
     image: absoluteUrl("/images/logo.png"),
-    favicon: absoluteUrl("/images/logo.png"),
+    favicon: absoluteUrl("/favicon.ico"),
     copyright: `© ${new Date().getFullYear()} ${siteConfig.name}`,
     feedLinks: {
       rss: absoluteUrl("/rss.xml"),
