@@ -14,6 +14,8 @@ type Props = {
   coverImage?: string;
   ctaLabel: string;
   priceLabel: string;
+  /** primary = brand yellow CTA (sales pages) */
+  variant?: "default" | "primary";
 };
 
 export function BuyEbookButton({
@@ -22,6 +24,7 @@ export function BuyEbookButton({
   coverImage = "/images/karykartyachi-ai-diary.png",
   ctaLabel,
   priceLabel,
+  variant = "default",
 }: Props) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -97,7 +100,11 @@ export function BuyEbookButton({
             currency: "INR",
           });
         }}
-        className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--foreground)] px-8 text-base font-medium text-[var(--background)] transition-opacity hover:opacity-90 sm:w-auto"
+        className={
+          variant === "primary"
+            ? "inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--primary)] px-8 text-base font-semibold text-[var(--primary-foreground)] shadow-[0_8px_24px_-8px_rgba(247,223,30,0.75)] transition-transform hover:scale-[1.02] active:scale-[0.99] sm:w-auto"
+            : "inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--foreground)] px-8 text-base font-medium text-[var(--background)] transition-opacity hover:opacity-90 sm:w-auto"
+        }
       >
         {ctaLabel} · {priceLabel}
       </button>
