@@ -19,6 +19,13 @@ const SOCIAL_PROOF_TEXT =
 /** Display-only compare-at price (checkout still uses ebook.priceInr) */
 const COMPARE_AT_PRICE_INR = 299;
 
+/** Urgency near price — update copy/date anytime */
+const URGENCY_TEXT = "ही सवलत मर्यादित काळासाठी उपलब्ध आहे";
+
+/** Short answer near top CTA (full FAQ stays at bottom) */
+const PDF_DELIVERY_HINT =
+  "PDF कसं मिळेल? पेमेंट झाल्यावर लगेच website वर download लिंक मिळते.";
+
 export const metadata: Metadata = {
   title: "कार्यकर्त्याची AI डायरी | ई-बुक",
   description:
@@ -111,9 +118,16 @@ function PriceBlock({
           : "flex flex-col gap-2"
       }
     >
-      <span className="inline-flex w-fit rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-white">
-        विशेष किंमत
-      </span>
+      <div
+        className={`flex flex-wrap items-center gap-2 ${align === "center" ? "justify-center" : ""}`}
+      >
+        <span className="inline-flex w-fit rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-white">
+          विशेष किंमत
+        </span>
+        <span className="inline-flex w-fit rounded-full border border-red-600/30 bg-red-50 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300">
+          {URGENCY_TEXT}
+        </span>
+      </div>
       <div
         className={`flex flex-wrap items-baseline gap-3 ${align === "center" ? "justify-center" : ""}`}
       >
@@ -181,41 +195,8 @@ export default function EbookSalesPage() {
           }}
         />
         <div className="relative mx-auto grid max-w-6xl md:grid-cols-2">
-          <div className="relative flex items-center justify-center overflow-hidden bg-[var(--secondary)] px-6 py-12 sm:px-10 sm:py-16">
-            <div
-              className="pointer-events-none absolute -left-16 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-[var(--primary)]/35 blur-3xl"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute -right-10 bottom-8 h-40 w-40 rounded-full bg-[var(--primary)]/25 blur-2xl"
-              aria-hidden
-            />
-            {/* No FadeIn here — LCP element must paint immediately */}
-            <div className="relative aspect-[2/3] w-full max-w-[380px]">
-              <div
-                className="absolute inset-0"
-                style={{
-                  filter:
-                    "drop-shadow(0 28px 40px rgba(0,0,0,0.3)) drop-shadow(0 10px 16px rgba(0,0,0,0.16))",
-                }}
-              >
-                <Image
-                  src={ebook.cover}
-                  alt={ebook.title}
-                  fill
-                  priority
-                  fetchPriority="high"
-                  className="object-contain object-center"
-                  sizes="(max-width: 768px) 100vw, 600px"
-                />
-              </div>
-            </div>
-          </div>
-
-          <FadeIn
-            delay={0.08}
-            className="flex flex-col justify-center px-5 py-12 sm:px-10 sm:py-16 lg:px-14"
-          >
+          {/* Copy first in DOM so headline paints before/without waiting on image */}
+          <div className="order-1 flex flex-col justify-center px-5 py-10 sm:px-10 sm:py-14 md:order-2 md:py-16 lg:px-14">
             <p className="font-english text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
               Social Sanvad · ई-बुक
             </p>
@@ -250,7 +231,10 @@ export default function EbookSalesPage() {
                 variant="primary"
               />
             </div>
-            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--muted)]">
+            <p className="mt-3 text-sm font-medium text-[var(--foreground)]/85">
+              {PDF_DELIVERY_HINT}
+            </p>
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--muted)]">
               <span className="inline-flex items-center gap-1">
                 <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
                 पेमेंट सुरक्षित · Cashfree
@@ -258,7 +242,38 @@ export default function EbookSalesPage() {
               <span className="text-[var(--border)]">·</span>
               <span>पेमेंट झाल्यावर लगेच डाउनलोड करा</span>
             </p>
-          </FadeIn>
+          </div>
+
+          <div className="relative order-2 flex items-center justify-center overflow-hidden bg-[var(--secondary)] px-6 py-10 sm:px-10 sm:py-14 md:order-1 md:py-16">
+            <div
+              className="pointer-events-none absolute -left-16 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-[var(--primary)]/35 blur-3xl"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute -right-10 bottom-8 h-40 w-40 rounded-full bg-[var(--primary)]/25 blur-2xl"
+              aria-hidden
+            />
+            {/* No FadeIn — LCP element must paint immediately */}
+            <div className="relative aspect-[2/3] w-full max-w-[380px]">
+              <div
+                className="absolute inset-0"
+                style={{
+                  filter:
+                    "drop-shadow(0 28px 40px rgba(0,0,0,0.3)) drop-shadow(0 10px 16px rgba(0,0,0,0.16))",
+                }}
+              >
+                <Image
+                  src={ebook.cover}
+                  alt={ebook.title}
+                  fill
+                  priority
+                  fetchPriority="high"
+                  className="object-contain object-center"
+                  sizes="(max-width: 768px) 100vw, 600px"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
