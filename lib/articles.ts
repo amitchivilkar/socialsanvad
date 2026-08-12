@@ -8,19 +8,25 @@ import { isValidCategorySlug } from "@/lib/categories";
 
 const articlesDirectory = path.join(process.cwd(), "content/articles");
 
+/**
+ * Unique heading ids matching rehype-slug / github-slugger:
+ * first "foo", then "foo-1", "foo-2", …
+ */
 function extractHeadings(content: string): Heading[] {
   const headingRegex = /^(#{2,3})\s+(.+)$/gm;
   const headings: Heading[] = [];
+  const seen = new Map<string, number>();
   let match: RegExpExecArray | null;
 
   while ((match = headingRegex.exec(content)) !== null) {
     const level = match[1].length;
     const text = match[2].replace(/[#*`]/g, "").trim();
-    headings.push({
-      id: slugify(text),
-      text,
-      level,
-    });
+    const base = slugify(text) || "section";
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    const id = count === 0 ? base : `${base}-${count}`;
+
+    headings.push({ id, text, level });
   }
 
   return headings;
