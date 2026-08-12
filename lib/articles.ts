@@ -41,7 +41,9 @@ function parseArticle(fileName: string): Article | null {
   if (frontmatter.draft) return null;
   if (!isValidCategorySlug(frontmatter.category)) return null;
 
-  const stats = readingTime(content);
+  // Skip fenced prompts/code — readers skim those; keeps times realistic
+  const readable = content.replace(/```[\s\S]*?```/g, " ");
+  const stats = readingTime(readable, { wordsPerMinute: 300 });
   const minutes = Math.max(1, Math.ceil(stats.minutes));
 
   return {

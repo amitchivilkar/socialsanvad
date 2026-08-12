@@ -160,7 +160,7 @@ export default function EbookSalesPage() {
               width={306}
               height={226}
               className="h-8 w-auto object-contain dark:invert"
-              priority
+              sizes="40px"
             />
             <span className="font-english text-base font-semibold tracking-tight text-[var(--foreground)] sm:text-lg">
               Social Sanvad
@@ -190,7 +190,8 @@ export default function EbookSalesPage() {
               className="pointer-events-none absolute -right-10 bottom-8 h-40 w-40 rounded-full bg-[var(--primary)]/25 blur-2xl"
               aria-hidden
             />
-            <FadeIn className="relative aspect-[2/3] w-full max-w-[380px]">
+            {/* No FadeIn here — LCP element must paint immediately */}
+            <div className="relative aspect-[2/3] w-full max-w-[380px]">
               <div
                 className="absolute inset-0"
                 style={{
@@ -203,11 +204,12 @@ export default function EbookSalesPage() {
                   alt={ebook.title}
                   fill
                   priority
+                  fetchPriority="high"
                   className="object-contain object-center"
-                  sizes="(max-width: 768px) 90vw, 380px"
+                  sizes="(max-width: 768px) 100vw, 600px"
                 />
               </div>
-            </FadeIn>
+            </div>
           </div>
 
           <FadeIn

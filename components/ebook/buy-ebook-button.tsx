@@ -21,7 +21,7 @@ type Props = {
 export function BuyEbookButton({
   ebookSlug,
   ebookTitle = "कार्यकर्त्याची AI डायरी",
-  coverImage = "/images/karykartyachi-ai-diary.png",
+  coverImage = "/images/karykartyachi-ai-diary.webp",
   ctaLabel,
   priceLabel,
   variant = "default",

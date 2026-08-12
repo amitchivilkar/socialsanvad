@@ -13,7 +13,7 @@ export const ebooks: Ebook[] = [
     title: "कार्यकर्त्याची AI डायरी",
     subtitle: "राजकीय कार्यकर्त्यांसाठी AI कंटेंट सिस्टम",
     priceInr: 125,
-    cover: "/images/karykartyachi-ai-diary.png",
+    cover: "/images/karykartyachi-ai-diary.webp",
     ctaLabel: "आत्ताच ई-बुक मिळवा",
   },
 ];
