@@ -27,8 +27,9 @@ export function Hero() {
             राजकारणात ऑनलाइन कसं बोलायचं — इथे शिकायला मिळेल
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--muted)] sm:text-xl">
-            नेते, कार्यकर्ते आणि संस्थांसाठी सोशल मीडिया, AI, WhatsApp आणि
-            वेबसाइट — सोप्या मराठीतून, खऱ्या अनुभवातून.
+            Social Sanvad (काही जण Social Samvad असंही शोधतात) हे नेते,
+            कार्यकर्ते आणि संस्थांसाठी सोशल मीडिया, AI, WhatsApp आणि वेबसाइट
+            — सोप्या मराठीतून, खऱ्या अनुभवातून शिकण्याचं व्यासपीठ आहे.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Button href="/articles" variant="primary" size="lg">

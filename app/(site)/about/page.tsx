@@ -47,6 +47,10 @@ export default function AboutPage() {
             <div className="mt-10 space-y-5 text-lg leading-relaxed text-[var(--foreground)]/90">
               <p>{siteConfig.author.bio}</p>
               <p>
+                काही जण आम्हाला "Social Samvad" असंही शोधतात — तेच आम्ही
+                आहोत.
+              </p>
+              <p>
                 ही जाहिरात कंपनी नाही. इथे खरं अनुभव आहे — चुका, यश आणि सोपे उपाय.
               </p>
               <p>

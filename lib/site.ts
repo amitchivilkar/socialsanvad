@@ -3,7 +3,7 @@ export const siteConfig = {
   nameMr: "सोशल संवाद",
   tagline: "राजकारणात ऑनलाइन कसं बोलायचं — सोप्या मराठीतून",
   description:
-    "नेते, कार्यकर्ते आणि संस्थांसाठी सोशल मीडिया, AI आणि WhatsApp — सोप्या मराठीतून.",
+    "Social Sanvad (काही जण Social Samvad असंही शोधतात) — नेते, कार्यकर्ते आणि संस्थांसाठी सोशल मीडिया, AI आणि WhatsApp सोप्या मराठीतून.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://socialsanvad.com",
   locale: "mr_IN",
   language: "mr",
