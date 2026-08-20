@@ -121,7 +121,7 @@ export default async function ArticlePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <article className="pb-16 pt-10 sm:pt-14">
+      <article className="overflow-x-clip pb-16 pt-10 sm:pt-14">
         <ProseContainer>
           <Breadcrumbs
             items={[
@@ -144,7 +144,7 @@ export default async function ArticlePage({
                 {getCategoryName(article.category)}
               </a>
             </p>
-            <h1 className="font-heading mt-3 text-3xl font-semibold leading-tight tracking-tight text-[var(--foreground)] sm:text-4xl lg:text-[2.75rem]">
+            <h1 className="font-heading mt-3 wrap-break-word text-3xl font-semibold leading-tight tracking-tight text-[var(--foreground)] sm:text-4xl lg:text-[2.75rem]">
               {article.title}
             </h1>
             <p className="mt-4 text-lg leading-relaxed text-[var(--muted)]">
@@ -164,13 +164,13 @@ export default async function ArticlePage({
         </ProseContainer>
 
         <Container className="mt-12">
-          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_220px]">
-            <div>
-              <div id="article-content" className="mx-auto max-w-[700px]">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="min-w-0">
+              <div id="article-content" className="mx-auto w-full max-w-[700px]">
                 {content}
               </div>
 
-              <div className="mx-auto mt-12 max-w-[700px] space-y-10">
+              <div className="mx-auto mt-12 w-full max-w-[700px] space-y-10">
                 <ShareButtons title={article.title} slug={article.slug} />
                 <PrevNextNav prev={prev} next={next} />
               </div>

@@ -73,7 +73,7 @@ export const mdxComponents: MDXComponents = {
   ),
   hr: () => <hr className="my-10 border-[var(--border)]" />,
   table: ({ children, ...props }) => (
-    <div className="my-8 overflow-x-auto">
+    <div className="my-8 max-w-full overflow-x-auto">
       <table
         className="w-full border-collapse text-left text-[0.95rem]"
         {...props}

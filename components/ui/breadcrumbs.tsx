@@ -9,11 +9,17 @@ export interface Crumb {
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
     <nav aria-label="ब्रेडक्रम्ब" className="mb-6">
-      <ol className="flex flex-wrap items-center gap-1.5 text-sm text-[var(--muted)]">
+      <ol className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm text-[var(--muted)]">
         {items.map((item, i) => {
           const isLast = i === items.length - 1;
           return (
-            <li key={`${item.label}-${i}`} className="flex items-center gap-1.5">
+            <li
+              key={`${item.label}-${i}`}
+              className={cn(
+                "flex min-w-0 items-center gap-1.5",
+                isLast && "max-w-full"
+              )}
+            >
               {i > 0 ? <span aria-hidden>/</span> : null}
               {item.href && !isLast ? (
                 <Link
@@ -24,7 +30,10 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
                 </Link>
               ) : (
                 <span
-                  className={cn(isLast && "text-[var(--foreground)]")}
+                  className={cn(
+                    isLast &&
+                      "min-w-0 wrap-break-word text-[var(--foreground)]"
+                  )}
                   aria-current={isLast ? "page" : undefined}
                 >
                   {item.label}

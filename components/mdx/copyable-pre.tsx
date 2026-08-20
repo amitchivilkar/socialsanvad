@@ -28,7 +28,7 @@ export function CopyablePre({
   }
 
   return (
-    <div className="group relative my-8">
+    <div className="group relative my-8 min-w-0 max-w-full">
       <button
         type="button"
         onClick={onCopy}
@@ -50,7 +50,7 @@ export function CopyablePre({
       <pre
         ref={preRef}
         className={[
-          "overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--secondary)] p-4 pt-11 font-mono text-sm leading-relaxed sm:pt-4",
+          "max-w-full overflow-x-auto whitespace-pre-wrap wrap-break-word rounded-xl border border-[var(--border)] bg-[var(--secondary)] p-4 pt-11 font-mono text-sm leading-relaxed sm:pt-4",
           className,
         ]
           .filter(Boolean)

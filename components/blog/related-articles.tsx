@@ -40,7 +40,7 @@ export function PrevNextNav({
           className="group rounded-2xl border border-[var(--border)] p-5 transition-colors hover:bg-[var(--secondary)]"
         >
           <p className="text-xs text-[var(--muted)]">← मागचा</p>
-          <p className="mt-2 font-heading text-base font-semibold text-[var(--foreground)] group-hover:underline">
+          <p className="mt-2 font-heading wrap-break-word text-base font-semibold text-[var(--foreground)] group-hover:underline">
             {prev.title}
           </p>
         </Link>
@@ -53,7 +53,7 @@ export function PrevNextNav({
           className="group rounded-2xl border border-[var(--border)] p-5 text-right transition-colors hover:bg-[var(--secondary)]"
         >
           <p className="text-xs text-[var(--muted)]">पुढील →</p>
-          <p className="mt-2 font-heading text-base font-semibold text-[var(--foreground)] group-hover:underline">
+          <p className="mt-2 font-heading wrap-break-word text-base font-semibold text-[var(--foreground)] group-hover:underline">
             {next.title}
           </p>
         </Link>

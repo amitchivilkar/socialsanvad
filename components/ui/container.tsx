@@ -24,7 +24,9 @@ export function ProseContainer({
   className?: string;
 }) {
   return (
-    <div className={cn("mx-auto w-full max-w-[700px] px-5 sm:px-8", className)}>
+    <div
+      className={cn("mx-auto min-w-0 w-full max-w-[700px] px-5 sm:px-8", className)}
+    >
       {children}
     </div>
   );

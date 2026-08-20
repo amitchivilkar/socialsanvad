@@ -76,6 +76,29 @@ body {
   margin: 0;
 }
 
+#article-content {
+  overflow-x: clip;
+  min-width: 0;
+}
+
+#article-content img,
+#article-content video,
+#article-content iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+#article-content pre,
+#article-content [data-rehype-pretty-code-figure] {
+  max-width: 100%;
+}
+
+#article-content pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 ::selection {
   background: var(--primary);
   color: var(--primary-foreground);
