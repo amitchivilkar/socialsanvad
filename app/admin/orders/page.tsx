@@ -41,6 +41,16 @@ export default function AdminOrdersPage() {
   const [query, setQuery] = useState("");
   const [renewingId, setRenewingId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [blogSendingId, setBlogSendingId] = useState<string | null>(null);
+  const [blogBulkSending, setBlogBulkSending] = useState(false);
+  const [articleTitle, setArticleTitle] = useState(
+    "AI वापरून Social Media Content Ideas कशा मिळवायच्या?"
+  );
+  const [articleUrl, setArticleUrl] = useState(
+    "https://www.socialsanvad.com/articles/ai-social-media-content-ideas-kasha-milvayachya"
+  );
+  const [extraName, setExtraName] = useState("");
+  const [extraPhone, setExtraPhone] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAction, setCopiedAction] = useState<"copy" | "renew" | null>(
     null
@@ -248,10 +258,109 @@ export default function AdminOrdersPage() {
     return new Date(o.downloadExpiresAt).getTime() < Date.now();
   }
 
+  async function onBlogSend(
+    o: OrderRow | null,
+    options?: {
+      sendToAllPaid?: boolean;
+      extrasOnly?: boolean;
+      extras?: { name: string; phone: string }[];
+    }
+  ) {
+    setError("");
+    setSuccess("");
+    const title = articleTitle.trim();
+    const url = articleUrl.trim();
+    if (!title || !url) {
+      setError("Article title and URL required.");
+      return;
+    }
+
+    if (!options?.sendToAllPaid && !options?.extrasOnly && !o) {
+      setError("No recipient selected.");
+      return;
+    }
+
+    if (options?.sendToAllPaid) {
+      setBlogBulkSending(true);
+    } else if (options?.extrasOnly) {
+      setBlogSendingId("extra");
+    } else if (o) {
+      setBlogSendingId(o.orderId);
+    }
+
+    try {
+      const res = await fetch("/api/admin/orders/blog-whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          articleTitle: title,
+          articleUrl: url,
+          orderId:
+            options?.sendToAllPaid || options?.extrasOnly
+              ? undefined
+              : o?.orderId,
+          sendToAllPaid: options?.sendToAllPaid ?? false,
+          extras: options?.extras ?? [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Blog WhatsApp send failed");
+        return;
+      }
+      if (options?.sendToAllPaid) {
+        setSuccess(
+          `Blog link sent to ${data.sent} recipient(s)${data.failed ? `, ${data.failed} failed` : ""}.`
+        );
+      } else if (options?.extrasOnly) {
+        setSuccess(`Blog link sent to ${options.extras?.[0]?.name || "contact"}.`);
+      } else if (o) {
+        setSuccess(`Blog link sent to ${o.name} via WhatsApp.`);
+      }
+    } catch {
+      setError("Blog WhatsApp send failed");
+    } finally {
+      setBlogSendingId(null);
+      setBlogBulkSending(false);
+    }
+  }
+
+  async function onBlogSendAllPaid() {
+    const paid = orders.filter((o) => o.status === "paid");
+    if (!paid.length) {
+      setError("No paid orders to message.");
+      return;
+    }
+    const extras =
+      extraName.trim() && extraPhone.trim().length >= 10
+        ? [{ name: extraName.trim(), phone: extraPhone.trim() }]
+        : [];
+    await onBlogSend(paid[0], { sendToAllPaid: true, extras });
+  }
+
+  async function onBlogSendExtra() {
+    if (!extraName.trim() || extraPhone.trim().length < 10) {
+      setError("Extra contact needs name and phone.");
+      return;
+    }
+    await onBlogSend(null, {
+      extrasOnly: true,
+      extras: [{ name: extraName.trim(), phone: extraPhone.trim() }],
+    });
+    setExtraName("");
+    setExtraPhone("");
+  }
+
   function waPhone(phone: string) {
     const digits = phone.replace(/\D/g, "");
     return digits.length === 10 ? `91${digits}` : digits;
   }
+
+  const paidOrders = useMemo(
+    () => orders.filter((o) => o.status === "paid"),
+    [orders]
+  );
 
   if (booting) {
     return (
@@ -437,6 +546,100 @@ export default function AdminOrdersPage() {
         </div>
       ) : null}
 
+      <section className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-heading text-base font-semibold">
+              Blog article WhatsApp
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+              MSG91 template <span className="font-english">bloglinksupdate</span>{" "}
+              — sends article title + link. Use per buyer or broadcast to all paid
+              customers.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={blogBulkSending || !paidOrders.length}
+            onClick={onBlogSendAllPaid}
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[var(--foreground)] px-4 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <MessageCircle
+              className={`h-4 w-4 ${blogBulkSending ? "animate-pulse" : ""}`}
+              strokeWidth={1.75}
+            />
+            {blogBulkSending
+              ? "Sending to all…"
+              : `Send to all paid (${paidOrders.length})`}
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">
+            <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
+              Article title
+            </span>
+            <input
+              type="text"
+              value={articleTitle}
+              onChange={(e) => setArticleTitle(e.target.value)}
+              className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
+              Article URL
+            </span>
+            <input
+              type="url"
+              value={articleUrl}
+              onChange={(e) => setArticleUrl(e.target.value)}
+              className="font-english h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-dashed border-[var(--border)] p-4">
+          <p className="text-xs font-medium text-[var(--muted)]">
+            Extra contact (non-buyer)
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="block flex-1 text-sm">
+              <span className="mb-1.5 block text-xs text-[var(--muted)]">
+                Name
+              </span>
+              <input
+                type="text"
+                value={extraName}
+                onChange={(e) => setExtraName(e.target.value)}
+                placeholder="नाव"
+                className="h-10 w-full rounded-xl border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--foreground)]"
+              />
+            </label>
+            <label className="block flex-1 text-sm">
+              <span className="mb-1.5 block text-xs text-[var(--muted)]">
+                Phone
+              </span>
+              <input
+                type="tel"
+                value={extraPhone}
+                onChange={(e) => setExtraPhone(e.target.value)}
+                placeholder="10-digit mobile"
+                className="font-english h-10 w-full rounded-xl border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--foreground)]"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={blogSendingId === "extra"}
+              onClick={onBlogSendExtra}
+              className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] px-4 text-sm font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+            >
+              {blogSendingId === "extra" ? "Sending…" : "Send to extra"}
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div className="mt-8 hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] lg:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-xs uppercase tracking-wide text-[var(--muted)]">
@@ -520,11 +723,13 @@ export default function AdminOrdersPage() {
                       order={o}
                       renewing={renewingId === o.orderId}
                       sending={sendingId === o.orderId}
+                      blogSending={blogSendingId === o.orderId}
                       copiedId={copiedId}
                       copiedAction={copiedAction}
                       onCopy={() => onCopyLink(o)}
                       onRenew={() => onRenew(o.orderId, o.name)}
                       onWhatsApp={() => onWhatsAppSend(o)}
+                      onBlog={() => onBlogSend(o)}
                     />
                   </td>
                 </tr>
@@ -576,11 +781,13 @@ export default function AdminOrdersPage() {
                   order={o}
                   renewing={renewingId === o.orderId}
                   sending={sendingId === o.orderId}
+                  blogSending={blogSendingId === o.orderId}
                   copiedId={copiedId}
                   copiedAction={copiedAction}
                   onCopy={() => onCopyLink(o)}
                   onRenew={() => onRenew(o.orderId, o.name)}
                   onWhatsApp={() => onWhatsAppSend(o)}
+                  onBlog={() => onBlogSend(o)}
                 />
               </div>
             </article>
@@ -589,8 +796,10 @@ export default function AdminOrdersPage() {
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-[var(--muted)]">
-        <strong className="text-[var(--foreground)]">WhatsApp</strong> = MSG91
-        template (renews link if expired).{" "}
+        <strong className="text-[var(--foreground)]">WhatsApp</strong> = ebook
+        download template (renews link if expired).{" "}
+        <strong className="text-[var(--foreground)]">Blog</strong> = article
+        link template using the fields above.{" "}
         <strong className="text-[var(--foreground)]">Copy</strong> /{" "}
         <strong className="text-[var(--foreground)]">Renew</strong> as before.
       </p>
@@ -640,30 +849,36 @@ function ActionButtons({
   order,
   renewing,
   sending,
+  blogSending,
   copiedId,
   copiedAction,
   onCopy,
   onRenew,
   onWhatsApp,
+  onBlog,
 }: {
   order: OrderRow;
   renewing: boolean;
   sending: boolean;
+  blogSending: boolean;
   copiedId: string | null;
   copiedAction: "copy" | "renew" | null;
   onCopy: () => void;
   onRenew: () => void;
   onWhatsApp: () => void;
+  onBlog: () => void;
 }) {
   if (order.status !== "paid") {
     return <span className="text-xs text-[var(--muted)]">—</span>;
   }
 
+  const busy = sending || blogSending || renewing;
+
   return (
     <div className="flex flex-wrap gap-1.5">
       <button
         type="button"
-        disabled={sending || renewing}
+        disabled={busy}
         onClick={onWhatsApp}
         className="inline-flex items-center gap-1 rounded-full bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
       >
@@ -672,6 +887,18 @@ function ActionButtons({
           strokeWidth={1.75}
         />
         {sending ? "Sending…" : "WhatsApp"}
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onBlog}
+        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--secondary)]/60 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+      >
+        <MessageCircle
+          className={`h-3.5 w-3.5 ${blogSending ? "animate-pulse" : ""}`}
+          strokeWidth={1.75}
+        />
+        {blogSending ? "Sending…" : "Blog"}
       </button>
       <button
         type="button"
@@ -693,7 +920,7 @@ function ActionButtons({
       </button>
       <button
         type="button"
-        disabled={renewing || sending}
+        disabled={renewing || busy}
         onClick={onRenew}
         className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
       >
