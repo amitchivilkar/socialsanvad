@@ -35,9 +35,19 @@ function hasUpstash() {
 async function upstash<T>(
   command: (string | number)[]
 ): Promise<T | null> {
+  const results = await upstashPipeline([command]);
+  return (results[0] as T | null) ?? null;
+}
+
+/** Batch multiple Redis commands in one HTTP round-trip. */
+async function upstashPipeline(
+  commands: (string | number)[][]
+): Promise<unknown[]> {
+  if (!commands.length) return [];
+
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
+  if (!url || !token) return [];
 
   const res = await fetch(url, {
     method: "POST",
@@ -45,7 +55,7 @@ async function upstash<T>(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(command),
+    body: JSON.stringify(commands),
     cache: "no-store",
   });
 
@@ -54,8 +64,58 @@ async function upstash<T>(
     throw new Error(`Upstash error: ${text}`);
   }
 
-  const data = (await res.json()) as { result: T };
-  return data.result;
+  const data: unknown = await res.json();
+  if (Array.isArray(data)) {
+    return data.map((item) =>
+      item && typeof item === "object" && "result" in item
+        ? (item as { result: unknown }).result
+        : null
+    );
+  }
+  if (data && typeof data === "object" && "result" in data) {
+    return [(data as { result: unknown }).result];
+  }
+  return [];
+}
+
+const UPSTASH_GET_BATCH = 100;
+
+async function fetchOrdersByIds(ids: string[]): Promise<OrderRecord[]> {
+  if (!ids.length) return [];
+
+  const orders: OrderRecord[] = [];
+
+  for (let i = 0; i < ids.length; i += UPSTASH_GET_BATCH) {
+    const batch = ids.slice(i, i + UPSTASH_GET_BATCH);
+    try {
+      const results = await upstashPipeline(
+        batch.map((id) => ["GET", orderKey(id)])
+      );
+      for (const raw of results) {
+        if (typeof raw !== "string" || !raw) continue;
+        try {
+          orders.push(JSON.parse(raw) as OrderRecord);
+        } catch {
+          /* skip corrupt entry */
+        }
+      }
+    } catch {
+      // Fallback: parallel individual fetches for this batch
+      const fallback = await Promise.all(batch.map((id) => getOrder(id)));
+      for (const order of fallback) {
+        if (order) orders.push(order);
+      }
+    }
+  }
+
+  return orders;
+}
+
+function sortOrdersNewestFirst(orders: OrderRecord[]): OrderRecord[] {
+  return orders.sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }
 
 async function readLocal(): Promise<StoreShape> {
@@ -172,22 +232,12 @@ export async function listOrders(): Promise<OrderRecord[]> {
   if (hasUpstash()) {
     const ids =
       (await upstash<string[] | null>(["SMEMBERS", ordersIndexKey()])) || [];
-    const orders: OrderRecord[] = [];
-    for (const id of ids) {
-      const order = await getOrder(id);
-      if (order) orders.push(order);
-    }
-    return orders.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    const orders = await fetchOrdersByIds(ids);
+    return sortOrdersNewestFirst(orders);
   }
 
   const store = await readLocal();
-  return Object.values(store.orders).sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  return sortOrdersNewestFirst(Object.values(store.orders));
 }
 
 export function createDownloadToken(): string {

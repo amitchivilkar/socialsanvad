@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Calendar,
-  LayoutDashboard,
   LogOut,
   MessageSquare,
   Package,
@@ -13,8 +12,7 @@ import {
 import { useAdmin } from "./admin-provider";
 
 const NAV = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/orders", label: "Orders", icon: Package, exact: false },
+  { href: "/admin", label: "Orders", icon: Package, exact: true },
   {
     href: "/admin/messaging",
     label: "Messaging",
