@@ -35,15 +35,37 @@ function hasUpstash() {
 async function upstash<T>(
   command: (string | number)[]
 ): Promise<T | null> {
-  const results = await upstashPipeline([command]);
-  return (results[0] as T | null) ?? null;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Upstash error: ${text}`);
+  }
+
+  const data = (await res.json()) as { result: T };
+  return data.result;
 }
 
-/** Batch multiple Redis commands in one HTTP round-trip. */
+/** Batch multiple Redis commands in one HTTP round-trip (2+ commands). */
 async function upstashPipeline(
   commands: (string | number)[][]
 ): Promise<unknown[]> {
   if (!commands.length) return [];
+  if (commands.length === 1) {
+    return [await upstash(commands[0])];
+  }
 
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -71,9 +93,6 @@ async function upstashPipeline(
         ? (item as { result: unknown }).result
         : null
     );
-  }
-  if (data && typeof data === "object" && "result" in data) {
-    return [(data as { result: unknown }).result];
   }
   return [];
 }
