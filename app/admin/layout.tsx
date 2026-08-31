@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AdminProvider } from "@/components/admin/admin-provider";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -12,7 +13,7 @@ export default function AdminLayout({
 }) {
   return (
     <div className="min-h-full bg-[var(--secondary)]/30 text-[var(--foreground)]">
-      {children}
+      <AdminProvider>{children}</AdminProvider>
     </div>
   );
 }

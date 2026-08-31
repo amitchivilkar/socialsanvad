@@ -1,56 +1,52 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { MessageCircle, Search } from "lucide-react";
+import { AdminError, AdminSuccess } from "@/components/admin/admin-alerts";
+import { AdminShell } from "@/components/admin/admin-shell";
 import {
-  Check,
-  Copy,
-  ExternalLink,
-  LogOut,
-  MessageCircle,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+  ExpiryCell,
+  OrderActions,
+  readArticleFields,
+  StatusBadge,
+} from "@/components/admin/order-actions";
+import { StatusTabs } from "@/components/admin/status-tabs";
+import type { OrderRow, OrderStatusFilter } from "@/components/admin/types";
 
-type OrderRow = {
-  orderId: string;
-  ebookSlug: string;
-  name: string;
-  phone: string;
-  status: string;
-  downloadCount: number;
-  downloadToken?: string;
-  downloadUrl?: string | null;
-  downloadExpiresAt?: string;
-  whatsappSentAt?: string;
-  createdAt: string;
-  paidAt?: string;
-};
+function parseStatusParam(value: string | null): OrderStatusFilter {
+  if (value === "paid" || value === "pending" || value === "failed") {
+    return value;
+  }
+  return "all";
+}
 
 export default function AdminOrdersPage() {
-  const [password, setPassword] = useState("");
-  const [authed, setAuthed] = useState(false);
-  const [booting, setBooting] = useState(true);
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--muted)]">
+          Loading orders…
+        </div>
+      }
+    >
+      <AdminOrdersContent />
+    </Suspense>
+  );
+}
+
+function AdminOrdersContent() {
+  const searchParams = useSearchParams();
   const [refreshing, setRefreshing] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [paidCount, setPaidCount] = useState(0);
   const [maxDownloads, setMaxDownloads] = useState(5);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>("all");
   const [renewingId, setRenewingId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [blogSendingId, setBlogSendingId] = useState<string | null>(null);
-  const [blogBulkSending, setBlogBulkSending] = useState(false);
-  const [articleTitle, setArticleTitle] = useState(
-    "AI वापरून Social Media Content Ideas कशा मिळवायच्या?"
-  );
-  const [articleUrl, setArticleUrl] = useState(
-    "https://www.socialsanvad.com/articles/ai-social-media-content-ideas-kasha-milvayachya"
-  );
-  const [extraName, setExtraName] = useState("");
-  const [extraPhone, setExtraPhone] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAction, setCopiedAction] = useState<"copy" | "renew" | null>(
     null
@@ -61,74 +57,54 @@ export default function AdminOrdersPage() {
     name: string;
   } | null>(null);
 
+  useEffect(() => {
+    setStatusFilter(parseStatusParam(searchParams.get("status")));
+  }, [searchParams]);
+
   const loadOrders = useCallback(async () => {
     setError("");
     const res = await fetch("/api/admin/orders", {
       cache: "no-store",
       credentials: "same-origin",
     });
-    if (res.status === 401) {
-      setAuthed(false);
-      setOrders([]);
-      setPaidCount(0);
-      return false;
-    }
     if (!res.ok) {
       setError("Orders load failed. Try Refresh again.");
       return false;
     }
     const data = await res.json();
-    setAuthed(true);
     setOrders(data.orders || []);
-    setPaidCount(data.paid || 0);
     setMaxDownloads(data.maxDownloads || 5);
     return true;
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setBooting(true);
-      await loadOrders();
-      if (!cancelled) setBooting(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void loadOrders();
   }, [loadOrders]);
+
+  const counts = useMemo(
+    () => ({
+      all: orders.length,
+      paid: orders.filter((o) => o.status === "paid").length,
+      pending: orders.filter((o) => o.status === "pending").length,
+      failed: orders.filter((o) => o.status === "failed").length,
+    }),
+    [orders]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return orders;
     const digits = q.replace(/\D/g, "");
-    return orders.filter((o) => {
-      if (o.name.toLowerCase().includes(q)) return true;
-      if (o.orderId.toLowerCase().includes(q)) return true;
-      if (o.phone.toLowerCase().includes(q)) return true;
-      if (digits && o.phone.replace(/\D/g, "").includes(digits)) return true;
-      return false;
-    });
-  }, [orders, query]);
-
-  async function onLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({ password }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || "Wrong password");
-      return;
-    }
-    setPassword("");
-    setBooting(true);
-    await loadOrders();
-    setBooting(false);
-  }
+    return orders
+      .filter((o) => statusFilter === "all" || o.status === statusFilter)
+      .filter((o) => {
+        if (!q) return true;
+        if (o.name.toLowerCase().includes(q)) return true;
+        if (o.orderId.toLowerCase().includes(q)) return true;
+        if (o.phone.toLowerCase().includes(q)) return true;
+        if (digits && o.phone.replace(/\D/g, "").includes(digits)) return true;
+        return false;
+      });
+  }, [orders, query, statusFilter]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -138,27 +114,6 @@ export default function AdminOrdersPage() {
       await loadOrders();
     } finally {
       setRefreshing(false);
-    }
-  }
-
-  async function onLogout() {
-    setLoggingOut(true);
-    setError("");
-    try {
-      await fetch("/api/admin/login", {
-        method: "DELETE",
-        credentials: "same-origin",
-      });
-      setAuthed(false);
-      setOrders([]);
-      setPaidCount(0);
-      setLastLink(null);
-      setPassword("");
-      setQuery("");
-    } catch {
-      setError("Logout failed — try again.");
-    } finally {
-      setLoggingOut(false);
     }
   }
 
@@ -186,7 +141,7 @@ export default function AdminOrdersPage() {
     setError("");
     setSuccess("");
     if (!o.downloadUrl) {
-      setError("No download link — click Renew first.");
+      setError("No download link — use More → Renew first.");
       return;
     }
     await copyText(o.orderId, o.downloadUrl, o.name, "copy");
@@ -235,8 +190,8 @@ export default function AdminOrdersPage() {
       }
       setSuccess(
         data.renewed
-          ? `WhatsApp sent to ${o.name} (new link issued).`
-          : `WhatsApp sent to ${o.name}.`
+          ? `Ebook WhatsApp sent to ${o.name} (new link issued).`
+          : `Ebook WhatsApp sent to ${o.name}.`
       );
       if (data.downloadUrl) {
         setLastLink({
@@ -253,41 +208,17 @@ export default function AdminOrdersPage() {
     }
   }
 
-  function isExpired(o: OrderRow) {
-    if (!o.downloadExpiresAt) return false;
-    return new Date(o.downloadExpiresAt).getTime() < Date.now();
-  }
-
-  async function onBlogSend(
-    o: OrderRow | null,
-    options?: {
-      sendToAllPaid?: boolean;
-      extrasOnly?: boolean;
-      extras?: { name: string; phone: string }[];
-    }
-  ) {
+  async function onBlogSend(o: OrderRow) {
     setError("");
     setSuccess("");
-    const title = articleTitle.trim();
-    const url = articleUrl.trim();
+    const { title, url } = readArticleFields();
     if (!title || !url) {
-      setError("Article title and URL required.");
+      setError(
+        "Set article title and URL on the Messaging page first."
+      );
       return;
     }
-
-    if (!options?.sendToAllPaid && !options?.extrasOnly && !o) {
-      setError("No recipient selected.");
-      return;
-    }
-
-    if (options?.sendToAllPaid) {
-      setBlogBulkSending(true);
-    } else if (options?.extrasOnly) {
-      setBlogSendingId("extra");
-    } else if (o) {
-      setBlogSendingId(o.orderId);
-    }
-
+    setBlogSendingId(o.orderId);
     try {
       const res = await fetch("/api/admin/orders/blog-whatsapp", {
         method: "POST",
@@ -296,12 +227,7 @@ export default function AdminOrdersPage() {
         body: JSON.stringify({
           articleTitle: title,
           articleUrl: url,
-          orderId:
-            options?.sendToAllPaid || options?.extrasOnly
-              ? undefined
-              : o?.orderId,
-          sendToAllPaid: options?.sendToAllPaid ?? false,
-          extras: options?.extras ?? [],
+          orderId: o.orderId,
         }),
       });
       const data = await res.json();
@@ -309,47 +235,17 @@ export default function AdminOrdersPage() {
         setError(data.error || "Blog WhatsApp send failed");
         return;
       }
-      if (options?.sendToAllPaid) {
-        setSuccess(
-          `Blog link sent to ${data.sent} recipient(s)${data.failed ? `, ${data.failed} failed` : ""}.`
-        );
-      } else if (options?.extrasOnly) {
-        setSuccess(`Blog link sent to ${options.extras?.[0]?.name || "contact"}.`);
-      } else if (o) {
-        setSuccess(`Blog link sent to ${o.name} via WhatsApp.`);
-      }
+      setSuccess(`Blog link sent to ${o.name} via WhatsApp.`);
     } catch {
       setError("Blog WhatsApp send failed");
     } finally {
       setBlogSendingId(null);
-      setBlogBulkSending(false);
     }
   }
 
-  async function onBlogSendAllPaid() {
-    const paid = orders.filter((o) => o.status === "paid");
-    if (!paid.length) {
-      setError("No paid orders to message.");
-      return;
-    }
-    const extras =
-      extraName.trim() && extraPhone.trim().length >= 10
-        ? [{ name: extraName.trim(), phone: extraPhone.trim() }]
-        : [];
-    await onBlogSend(paid[0], { sendToAllPaid: true, extras });
-  }
-
-  async function onBlogSendExtra() {
-    if (!extraName.trim() || extraPhone.trim().length < 10) {
-      setError("Extra contact needs name and phone.");
-      return;
-    }
-    await onBlogSend(null, {
-      extrasOnly: true,
-      extras: [{ name: extraName.trim(), phone: extraPhone.trim() }],
-    });
-    setExtraName("");
-    setExtraPhone("");
+  function isExpired(o: OrderRow) {
+    if (!o.downloadExpiresAt) return false;
+    return new Date(o.downloadExpiresAt).getTime() < Date.now();
   }
 
   function waPhone(phone: string) {
@@ -357,134 +253,20 @@ export default function AdminOrdersPage() {
     return digits.length === 10 ? `91${digits}` : digits;
   }
 
-  const paidOrders = useMemo(
-    () => orders.filter((o) => o.status === "paid"),
-    [orders]
-  );
-
-  if (booting) {
-    return (
-      <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-5">
-        <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
-          <RefreshCw className="h-4 w-4 animate-spin" strokeWidth={1.75} />
-          Loading admin…
-        </div>
-      </div>
-    );
-  }
-
-  if (!authed) {
-    return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5">
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--background)] p-8 shadow-sm">
-          <div className="mb-6 h-1.5 w-12 rounded-full bg-[var(--primary)]" />
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Admin
-          </h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Ebook orders — password required
-          </p>
-          <form onSubmit={onLogin} className="mt-8 space-y-4">
-            <label className="block text-sm font-medium" htmlFor="admin-pass">
-              Password
-            </label>
-            <input
-              id="admin-pass"
-              type="password"
-              required
-              autoFocus
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Admin password"
-              className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
-            />
-            {error ? (
-              <p className="text-sm text-red-600" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <button
-              type="submit"
-              className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[var(--foreground)] text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90"
-            >
-              Login
-            </button>
-          </form>
-        </div>
-        <Link
-          href="/"
-          className="mt-6 text-center text-sm text-[var(--muted)] underline-offset-4 hover:underline"
-        >
-          ← Site home
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto min-h-screen max-w-6xl px-5 py-8 sm:py-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
-            Social Sanvad
-          </p>
-          <h1 className="font-heading mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-            Ebook orders
-          </h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={refreshing}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-medium transition-colors hover:bg-[var(--secondary)] disabled:cursor-wait disabled:opacity-60"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-              strokeWidth={1.75}
-            />
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </button>
-          <button
-            type="button"
-            onClick={onLogout}
-            disabled={loggingOut}
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-60"
-          >
-            <LogOut className="h-4 w-4" strokeWidth={1.75} />
-            {loggingOut ? "Logging out…" : "Logout"}
-          </button>
-        </div>
-      </header>
+    <AdminShell
+      title="Orders"
+      description="Ebook purchases, download links, and WhatsApp actions."
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+    >
+      <StatusTabs
+        value={statusFilter}
+        onChange={setStatusFilter}
+        counts={counts}
+      />
 
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
-          <p className="text-xs font-medium text-[var(--muted)]">Total orders</p>
-          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
-            {orders.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
-          <p className="text-xs font-medium text-[var(--muted)]">Paid</p>
-          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums text-emerald-700">
-            {paidCount}
-          </p>
-        </div>
-        <div className="col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 sm:col-span-1">
-          <p className="text-xs font-medium text-[var(--muted)]">
-            Download limit
-          </p>
-          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
-            {maxDownloads}
-            <span className="text-base font-normal text-[var(--muted)]">
-              {" "}
-              / link
-            </span>
-          </p>
-        </div>
-      </div>
-
-      <div className="relative mt-6">
+      <div className="relative">
         <Search
           className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
           strokeWidth={1.75}
@@ -504,26 +286,11 @@ export default function AdminOrdersPage() {
         ) : null}
       </div>
 
-      {error ? (
-        <div
-          className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          role="alert"
-        >
-          {error}
-        </div>
-      ) : null}
-
-      {success ? (
-        <div
-          className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-          role="status"
-        >
-          {success}
-        </div>
-      ) : null}
+      <AdminError message={error} />
+      <AdminSuccess message={success} />
 
       {lastLink ? (
-        <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
@@ -546,101 +313,7 @@ export default function AdminOrdersPage() {
         </div>
       ) : null}
 
-      <section className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-base font-semibold">
-              Blog article WhatsApp
-            </h2>
-            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-              MSG91 template <span className="font-english">bloglinksupdate</span>{" "}
-              — sends article title + link. Use per buyer or broadcast to all paid
-              customers.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={blogBulkSending || !paidOrders.length}
-            onClick={onBlogSendAllPaid}
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[var(--foreground)] px-4 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <MessageCircle
-              className={`h-4 w-4 ${blogBulkSending ? "animate-pulse" : ""}`}
-              strokeWidth={1.75}
-            />
-            {blogBulkSending
-              ? "Sending to all…"
-              : `Send to all paid (${paidOrders.length})`}
-          </button>
-        </div>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm">
-            <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-              Article title
-            </span>
-            <input
-              type="text"
-              value={articleTitle}
-              onChange={(e) => setArticleTitle(e.target.value)}
-              className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-              Article URL
-            </span>
-            <input
-              type="url"
-              value={articleUrl}
-              onChange={(e) => setArticleUrl(e.target.value)}
-              className="font-english h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--foreground)] focus:ring-2 focus:ring-[var(--foreground)]/10"
-            />
-          </label>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-dashed border-[var(--border)] p-4">
-          <p className="text-xs font-medium text-[var(--muted)]">
-            Extra contact (non-buyer)
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="block flex-1 text-sm">
-              <span className="mb-1.5 block text-xs text-[var(--muted)]">
-                Name
-              </span>
-              <input
-                type="text"
-                value={extraName}
-                onChange={(e) => setExtraName(e.target.value)}
-                placeholder="नाव"
-                className="h-10 w-full rounded-xl border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--foreground)]"
-              />
-            </label>
-            <label className="block flex-1 text-sm">
-              <span className="mb-1.5 block text-xs text-[var(--muted)]">
-                Phone
-              </span>
-              <input
-                type="tel"
-                value={extraPhone}
-                onChange={(e) => setExtraPhone(e.target.value)}
-                placeholder="10-digit mobile"
-                className="font-english h-10 w-full rounded-xl border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--foreground)]"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={blogSendingId === "extra"}
-              onClick={onBlogSendExtra}
-              className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] px-4 text-sm font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
-            >
-              {blogSendingId === "extra" ? "Sending…" : "Send to extra"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-8 hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] lg:block">
+      <div className="hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--background)] lg:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-xs uppercase tracking-wide text-[var(--muted)]">
             <tr>
@@ -648,7 +321,6 @@ export default function AdminOrdersPage() {
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Downloads</th>
               <th className="px-4 py-3 font-medium">Expiry</th>
-              <th className="px-4 py-3 font-medium">Link</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
@@ -656,7 +328,7 @@ export default function AdminOrdersPage() {
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   className="px-4 py-14 text-center text-[var(--muted)]"
                 >
                   {orders.length === 0
@@ -706,20 +378,8 @@ export default function AdminOrdersPage() {
                   <td className="px-4 py-4 text-xs">
                     <ExpiryCell order={o} expired={isExpired(o)} />
                   </td>
-                  <td className="max-w-[180px] px-4 py-4">
-                    {o.downloadUrl ? (
-                      <p
-                        className="font-english truncate text-xs text-[var(--muted)]"
-                        title={o.downloadUrl}
-                      >
-                        …/{o.downloadToken?.slice(-8)}
-                      </p>
-                    ) : (
-                      <span className="text-xs text-[var(--muted)]">—</span>
-                    )}
-                  </td>
                   <td className="px-4 py-4">
-                    <ActionButtons
+                    <OrderActions
                       order={o}
                       renewing={renewingId === o.orderId}
                       sending={sendingId === o.orderId}
@@ -739,7 +399,7 @@ export default function AdminOrdersPage() {
         </table>
       </div>
 
-      <div className="mt-6 space-y-3 lg:hidden">
+      <div className="space-y-3 lg:hidden">
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-10 text-center text-sm text-[var(--muted)]">
             {orders.length === 0 ? "No orders yet." : "No matching orders."}
@@ -771,13 +431,8 @@ export default function AdminOrdersPage() {
                 </p>
                 <ExpiryCell order={o} expired={isExpired(o)} />
               </div>
-              {o.downloadUrl ? (
-                <p className="font-english mt-2 truncate text-[11px] text-[var(--muted)]">
-                  {o.downloadUrl}
-                </p>
-              ) : null}
               <div className="mt-3">
-                <ActionButtons
+                <OrderActions
                   order={o}
                   renewing={renewingId === o.orderId}
                   sending={sendingId === o.orderId}
@@ -795,161 +450,16 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
-      <p className="mt-6 text-xs leading-relaxed text-[var(--muted)]">
-        <strong className="text-[var(--foreground)]">WhatsApp</strong> = ebook
-        download template (renews link if expired).{" "}
-        <strong className="text-[var(--foreground)]">Blog</strong> = article
-        link template using the fields above.{" "}
-        <strong className="text-[var(--foreground)]">Copy</strong> /{" "}
-        <strong className="text-[var(--foreground)]">Renew</strong> as before.
-      </p>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const paid = status === "paid";
-  return (
-    <span
-      className={
-        paid
-          ? "inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800"
-          : "inline-flex rounded-full bg-[var(--secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--muted)]"
-      }
-    >
-      {status}
-    </span>
-  );
-}
-
-function ExpiryCell({
-  order,
-  expired,
-}: {
-  order: OrderRow;
-  expired: boolean;
-}) {
-  if (!order.downloadExpiresAt) {
-    return <span className="text-[var(--muted)]">—</span>;
-  }
-  return (
-    <span
-      className={expired ? "font-medium text-red-600" : "text-[var(--muted)]"}
-    >
-      {expired ? "Expired · " : ""}
-      {new Date(order.downloadExpiresAt).toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })}
-    </span>
-  );
-}
-
-function ActionButtons({
-  order,
-  renewing,
-  sending,
-  blogSending,
-  copiedId,
-  copiedAction,
-  onCopy,
-  onRenew,
-  onWhatsApp,
-  onBlog,
-}: {
-  order: OrderRow;
-  renewing: boolean;
-  sending: boolean;
-  blogSending: boolean;
-  copiedId: string | null;
-  copiedAction: "copy" | "renew" | null;
-  onCopy: () => void;
-  onRenew: () => void;
-  onWhatsApp: () => void;
-  onBlog: () => void;
-}) {
-  if (order.status !== "paid") {
-    return <span className="text-xs text-[var(--muted)]">—</span>;
-  }
-
-  const busy = sending || blogSending || renewing;
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onWhatsApp}
-        className="inline-flex items-center gap-1 rounded-full bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
-        <MessageCircle
-          className={`h-3.5 w-3.5 ${sending ? "animate-pulse" : ""}`}
-          strokeWidth={1.75}
-        />
-        {sending ? "Sending…" : "WhatsApp"}
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onBlog}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--secondary)]/60 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
-      >
-        <MessageCircle
-          className={`h-3.5 w-3.5 ${blogSending ? "animate-pulse" : ""}`}
-          strokeWidth={1.75}
-        />
-        {blogSending ? "Sending…" : "Blog"}
-      </button>
-      <button
-        type="button"
-        disabled={!order.downloadUrl}
-        onClick={onCopy}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-40"
-      >
-        {copiedId === order.orderId && copiedAction === "copy" ? (
-          <>
-            <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Copied
-          </>
-        ) : (
-          <>
-            <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Copy
-          </>
-        )}
-      </button>
-      <button
-        type="button"
-        disabled={renewing || busy}
-        onClick={onRenew}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
-      >
-        {copiedId === order.orderId && copiedAction === "renew" ? (
-          <>
-            <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Copied
-          </>
-        ) : (
-          <>
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${renewing ? "animate-spin" : ""}`}
-              strokeWidth={1.75}
-            />
-            Renew
-          </>
-        )}
-      </button>
-      {order.downloadUrl ? (
-        <a
-          href={order.downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)]"
-        >
-          <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
-          Open
+      <p className="text-xs leading-relaxed text-[var(--muted)]">
+        <strong className="text-[var(--foreground)]">Ebook WA</strong> = download
+        template. <strong className="text-[var(--foreground)]">Blog</strong> uses
+        article fields from{" "}
+        <a href="/admin/messaging" className="underline">
+          Messaging
         </a>
-      ) : null}
-    </div>
+        . Use <strong className="text-[var(--foreground)]">⋯</strong> for copy /
+        renew / open.
+      </p>
+    </AdminShell>
   );
 }
