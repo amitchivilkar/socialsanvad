@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   MessageCircle,
+  Pencil,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -65,6 +66,7 @@ export function OrderActions({
   onRenew,
   onWhatsApp,
   onBlog,
+  onEdit,
 }: {
   order: OrderRow;
   renewing: boolean;
@@ -76,11 +78,9 @@ export function OrderActions({
   onRenew: () => void;
   onWhatsApp: () => void;
   onBlog: () => void;
+  onEdit: () => void;
 }) {
-  if (order.status !== "paid") {
-    return <span className="text-xs text-[var(--muted)]">—</span>;
-  }
-
+  const paid = order.status === "paid";
   const busy = sending || blogSending || renewing;
 
   return (
@@ -88,76 +88,89 @@ export function OrderActions({
       <button
         type="button"
         disabled={busy}
-        onClick={onWhatsApp}
-        className="inline-flex items-center gap-1 rounded-full bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
-        <MessageCircle
-          className={`h-3.5 w-3.5 ${sending ? "animate-pulse" : ""}`}
-          strokeWidth={1.75}
-        />
-        {sending ? "Sending…" : "WhatsApp"}
-      </button>
-      <button
-        type="button"
-        disabled={!order.downloadUrl}
-        onClick={onCopy}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-40"
-      >
-        {copiedId === order.orderId && copiedAction === "copy" ? (
-          <>
-            <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Copied
-          </>
-        ) : (
-          <>
-            <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Copy
-          </>
-        )}
-      </button>
-      <button
-        type="button"
-        disabled={renewing || busy}
-        onClick={onRenew}
+        onClick={onEdit}
         className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
       >
-        {copiedId === order.orderId && copiedAction === "renew" ? (
-          <>
-            <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Copied
-          </>
-        ) : (
-          <>
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${renewing ? "animate-spin" : ""}`}
+        <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+        Edit
+      </button>
+      {paid ? (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onWhatsApp}
+            className="inline-flex items-center gap-1 rounded-full bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <MessageCircle
+              className={`h-3.5 w-3.5 ${sending ? "animate-pulse" : ""}`}
               strokeWidth={1.75}
             />
-            Renew
-          </>
-        )}
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onBlog}
-        className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--secondary)]/60 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
-      >
-        <MessageCircle
-          className={`h-3.5 w-3.5 ${blogSending ? "animate-pulse" : ""}`}
-          strokeWidth={1.75}
-        />
-        {blogSending ? "Sending…" : "Blog"}
-      </button>
-      {order.downloadUrl ? (
-        <a
-          href={order.downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)]"
-        >
-          <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
-          Open
-        </a>
+            {sending ? "Sending…" : "WhatsApp"}
+          </button>
+          <button
+            type="button"
+            disabled={!order.downloadUrl}
+            onClick={onCopy}
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-40"
+          >
+            {copiedId === order.orderId && copiedAction === "copy" ? (
+              <>
+                <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Copy
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            disabled={renewing || busy}
+            onClick={onRenew}
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+          >
+            {copiedId === order.orderId && copiedAction === "renew" ? (
+              <>
+                <Check className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Copied
+              </>
+            ) : (
+              <>
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${renewing ? "animate-spin" : ""}`}
+                  strokeWidth={1.75}
+                />
+                Renew
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onBlog}
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--secondary)]/60 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+          >
+            <MessageCircle
+              className={`h-3.5 w-3.5 ${blogSending ? "animate-pulse" : ""}`}
+              strokeWidth={1.75}
+            />
+            {blogSending ? "Sending…" : "Blog"}
+          </button>
+          {order.downloadUrl ? (
+            <a
+              href={order.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Open
+            </a>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

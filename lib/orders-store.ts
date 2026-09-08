@@ -259,6 +259,33 @@ export async function listOrders(): Promise<OrderRecord[]> {
   return sortOrdersNewestFirst(Object.values(store.orders));
 }
 
+/** Admin: fix buyer name / phone (e.g. wrong WhatsApp number). */
+export async function updateOrderDetails(
+  orderId: string,
+  input: { name?: string; phone?: string }
+): Promise<OrderRecord | null> {
+  const existing = await getOrder(orderId);
+  if (!existing) return null;
+
+  const name =
+    input.name !== undefined ? input.name.trim() : existing.name;
+  const phone =
+    input.phone !== undefined
+      ? input.phone.replace(/\D/g, "").slice(-10)
+      : existing.phone;
+
+  if (!name || name.length < 2) return null;
+  if (!phone || phone.length < 10) return null;
+
+  const updated: OrderRecord = {
+    ...existing,
+    name,
+    phone,
+  };
+  await writeOrder(updated);
+  return updated;
+}
+
 export function createDownloadToken(): string {
   return randomBytes(24).toString("hex");
 }

@@ -42,6 +42,11 @@ export function OrdersPanel({
     url: string;
     name: string;
   } | null>(null);
+  const [editing, setEditing] = useState<OrderRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editResendWa, setEditResendWa] = useState(true);
 
   useEffect(() => {
     setStatusFilter(initialStatusFilter);
@@ -223,6 +228,96 @@ export function OrdersPanel({
       setError("Blog WhatsApp send failed");
     } finally {
       setBlogSendingId(null);
+    }
+  }
+
+  function openEdit(o: OrderRow) {
+    setEditing(o);
+    setEditName(o.name);
+    setEditPhone(o.phone);
+    setEditResendWa(o.status === "paid");
+    setError("");
+    setSuccess("");
+  }
+
+  async function onSaveEdit() {
+    if (!editing) return;
+    const name = editName.trim();
+    const phone = editPhone.replace(/\D/g, "");
+    if (name.length < 2) {
+      setError("Name must be at least 2 characters.");
+      return;
+    }
+    if (phone.length < 10) {
+      setError("Phone must be at least 10 digits.");
+      return;
+    }
+
+    setEditSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          orderId: editing.orderId,
+          name,
+          phone,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Update failed");
+        return;
+      }
+
+      const updated = data.order as OrderRow;
+      setOrders((prev) =>
+        prev.map((o) => (o.orderId === updated.orderId ? { ...o, ...updated } : o))
+      );
+      setEditing(null);
+
+      if (editResendWa && updated.status === "paid") {
+        setSendingId(updated.orderId);
+        try {
+          const wa = await fetch("/api/admin/orders/whatsapp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ orderId: updated.orderId }),
+          });
+          const waData = await wa.json();
+          if (!wa.ok) {
+            setSuccess(
+              `Details updated for ${updated.name}. WhatsApp failed: ${waData.error || "send error"}`
+            );
+          } else {
+            setSuccess(
+              `Details updated and WhatsApp sent to ${updated.name} (${updated.phone}).`
+            );
+            if (waData.downloadUrl) {
+              setLastLink({
+                orderId: updated.orderId,
+                url: waData.downloadUrl,
+                name: updated.name,
+              });
+            }
+            await loadOrders();
+          }
+        } finally {
+          setSendingId(null);
+        }
+      } else {
+        setSuccess(
+          `Details updated for ${updated.name} (${updated.phone}).`
+        );
+      }
+    } catch {
+      setError("Update failed");
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -408,6 +503,7 @@ export function OrdersPanel({
                       onRenew={() => onRenew(o.orderId, o.name)}
                       onWhatsApp={() => onWhatsAppSend(o)}
                       onBlog={() => onBlogSend(o)}
+                      onEdit={() => openEdit(o)}
                     />
                   </td>
                 </tr>
@@ -466,6 +562,7 @@ export function OrdersPanel({
                   onRenew={() => onRenew(o.orderId, o.name)}
                   onWhatsApp={() => onWhatsAppSend(o)}
                   onBlog={() => onBlogSend(o)}
+                  onEdit={() => openEdit(o)}
                 />
               </div>
             </article>
@@ -473,7 +570,84 @@ export function OrdersPanel({
         )}
       </div>
 
+      {editing ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-buyer-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-lg">
+            <h2
+              id="edit-buyer-title"
+              className="font-heading text-lg font-semibold"
+            >
+              Edit buyer details
+            </h2>
+            <p className="font-english mt-1 truncate text-xs text-[var(--muted)]">
+              {editing.orderId}
+            </p>
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm">
+                <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
+                  Name
+                </span>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--foreground)]"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
+                  Phone (WhatsApp)
+                </span>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="10-digit mobile"
+                  className="font-english h-11 w-full rounded-xl border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--foreground)]"
+                />
+              </label>
+              {editing.status === "paid" ? (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editResendWa}
+                    onChange={(e) => setEditResendWa(e.target.checked)}
+                    className="rounded border-[var(--border)]"
+                  />
+                  Resend ebook WhatsApp after save
+                </label>
+              ) : null}
+            </div>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                disabled={editSaving}
+                onClick={() => setEditing(null)}
+                className="inline-flex h-10 items-center rounded-full border border-[var(--border)] px-4 text-sm font-medium hover:bg-[var(--secondary)] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={editSaving}
+                onClick={() => void onSaveEdit()}
+                className="inline-flex h-10 items-center rounded-full bg-[var(--foreground)] px-4 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-50"
+              >
+                {editSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <p className="text-xs leading-relaxed text-[var(--muted)]">
+        <strong className="text-[var(--foreground)]">Edit</strong> = fix name /
+        phone (wrong WhatsApp number).{" "}
         <strong className="text-[var(--foreground)]">WhatsApp</strong> = ebook
         download template (renews link if expired).{" "}
         <strong className="text-[var(--foreground)]">Blog</strong> uses article
