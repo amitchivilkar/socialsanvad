@@ -34,8 +34,34 @@ export function formatMarathiDate(dateString: string): string {
   return `${day} ${month} ${year}`;
 }
 
-export function readingTimeLabel(minutes: number): string {
-  return `${toMarathiDigits(minutes)} मिनिटं वाचा`;
+export function readingTimeLabel(minutes: number | string): string {
+  if (typeof minutes === "string") {
+    const range = minutes.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+    if (range) {
+      return `${toMarathiDigits(Number(range[1]))}–${toMarathiDigits(Number(range[2]))} मिनिटं वाचा`;
+    }
+    const n = Number.parseInt(minutes, 10);
+    if (!Number.isNaN(n) && n > 0) {
+      return `${toMarathiDigits(n)} मिनिटं वाचा`;
+    }
+  }
+  const n = typeof minutes === "number" ? minutes : 1;
+  return `${toMarathiDigits(Math.max(1, n))} मिनिटं वाचा`;
+}
+
+/** Numeric minutes for sorting/metadata; range "12-15" → 15. */
+export function resolveReadingMinutes(
+  value: number | string | undefined,
+  fallback: number
+): number {
+  if (typeof value === "number" && value > 0) return Math.ceil(value);
+  if (typeof value === "string") {
+    const range = value.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+    if (range) return Math.max(1, Number(range[2]));
+    const n = Number.parseInt(value, 10);
+    if (!Number.isNaN(n) && n > 0) return n;
+  }
+  return Math.max(1, fallback);
 }
 
 export function absoluteUrl(path: string): string {

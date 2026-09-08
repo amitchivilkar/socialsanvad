@@ -34,6 +34,8 @@ export interface ArticleFrontmatter {
   featured?: boolean;
   popular?: boolean;
   draft?: boolean;
+  /** Override auto reading time. Number (12) or range string ("12-15"). */
+  readingMinutes?: number | string;
   seo?: {
     title?: string;
     description?: string;

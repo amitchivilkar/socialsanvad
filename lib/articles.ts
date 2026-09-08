@@ -3,7 +3,11 @@ import path from "path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
 import type { Article, ArticleFrontmatter, Heading } from "@/types";
-import { readingTimeLabel, slugify } from "@/lib/utils";
+import {
+  readingTimeLabel,
+  resolveReadingMinutes,
+  slugify,
+} from "@/lib/utils";
 import { isValidCategorySlug } from "@/lib/categories";
 
 const articlesDirectory = path.join(process.cwd(), "content/articles");
@@ -44,12 +48,20 @@ function parseArticle(fileName: string): Article | null {
   // Skip fenced prompts/code — readers skim those; keeps times realistic
   const readable = content.replace(/```[\s\S]*?```/g, " ");
   const stats = readingTime(readable, { wordsPerMinute: 300 });
-  const minutes = Math.max(1, Math.ceil(stats.minutes));
+  const autoMinutes = Math.max(1, Math.ceil(stats.minutes));
+  const minutes = resolveReadingMinutes(
+    frontmatter.readingMinutes,
+    autoMinutes
+  );
+  const label =
+    frontmatter.readingMinutes !== undefined
+      ? readingTimeLabel(frontmatter.readingMinutes)
+      : readingTimeLabel(minutes);
 
   return {
     ...frontmatter,
     content,
-    readingTime: readingTimeLabel(minutes),
+    readingTime: label,
     readingMinutes: minutes,
     headings: extractHeadings(content),
   };
