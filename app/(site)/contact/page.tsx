@@ -73,6 +73,9 @@ export default function ContactPage() {
               <strong>{siteConfig.name}</strong> ({siteConfig.nameMr}) — डिजिटल
               संवाद, लेख आणि ई-बुक्स.
             </p>
+            <p>
+              Legal / business name: <strong>Amit Chivilkar</strong>
+            </p>
             <p className="text-[var(--muted)]">
               आम्ही शक्य तितक्या लवकर उत्तर देण्याचा प्रयत्न करतो. ई-बुक ऑर्डर /
               पेमेंट संबंधित विषयांसाठी ईमेलमध्ये ऑर्डर तपशील लिहा.

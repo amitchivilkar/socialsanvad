@@ -140,6 +140,10 @@ export default function RefundPage() {
       <section>
         <h2>9. Contact</h2>
         <p className="mt-3">
+          This website is owned and operated by{" "}
+          <strong>Amit Chivilkar</strong> ({siteConfig.name}).
+        </p>
+        <p className="mt-3">
           Email: <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>
         </p>
       </section>

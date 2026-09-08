@@ -16,14 +16,18 @@ export default function TermsPage() {
     <LegalPage
       title="Terms & Conditions"
       description="These terms apply when you use this website and buy our digital products."
-      updatedAt="1 August 2026"
+      updatedAt="8 September 2026"
     >
       <section>
         <h2>1. Who we are</h2>
         <p className="mt-3">
-          This website is operated by <strong>{siteConfig.name}</strong>. For
+          This website (<strong>{siteConfig.name}</strong>) is owned and operated
+          by <strong>Amit Chivilkar</strong> (legal / business name). For
           questions, email{" "}
           <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>.
+        </p>
+        <p className="mt-3">
+          Legal name of the business: <strong>Amit Chivilkar</strong>
         </p>
       </section>
 
@@ -61,8 +65,9 @@ export default function TermsPage() {
         <h2>4. Use and copyright</h2>
         <ul>
           <li>
-            Website content, design, and ebook materials are owned by{" "}
-            {siteConfig.name}, unless stated otherwise.
+          Website content, design, and ebook materials are owned by{" "}
+          <strong>Amit Chivilkar</strong> / {siteConfig.name}, unless stated
+          otherwise.
           </li>
           <li>
             Ebooks are for personal use. Reselling, mass copying, or public

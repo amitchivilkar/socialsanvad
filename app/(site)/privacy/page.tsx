@@ -16,13 +16,14 @@ export default function PrivacyPage() {
     <LegalPage
       title="Privacy Policy"
       description="This policy explains what personal information we collect, why we collect it, and how we protect it."
-      updatedAt="1 August 2026"
+      updatedAt="8 September 2026"
     >
       <section>
         <h2>1. Who we are</h2>
         <p className="mt-3">
-          This website is operated by <strong>{siteConfig.name}</strong>. For
-          privacy questions, email{" "}
+          This website (<strong>{siteConfig.name}</strong>) is owned and operated
+          by <strong>Amit Chivilkar</strong> (legal / business name). For privacy
+          questions, email{" "}
           <a href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>.
         </p>
       </section>
