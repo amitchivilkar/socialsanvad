@@ -14,10 +14,18 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type Props = { params: Promise<{ token: string }> };
+/** Always fresh count from Upstash — never serve a stale "5/5" page. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export default async function DownloadPage({ params }: Props) {
+type Props = {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function DownloadPage({ params, searchParams }: Props) {
   const { token } = await params;
+  const { error: errorParam } = await searchParams;
   if (!token) notFound();
 
   const gate = await assertCanDownload(token);
@@ -30,6 +38,9 @@ export default async function DownloadPage({ params }: Props) {
         </h1>
         <p className="mt-4 max-w-md text-base text-[var(--muted)]">
           {gate.message}
+        </p>
+        <p className="mt-3 max-w-md text-sm text-[var(--muted)]">
+          Admin कडून <strong>Renew</strong> करून नवीन लिंक मागा.
         </p>
         <a
           href={`mailto:${siteConfig.contact.email}`}
@@ -48,6 +59,10 @@ export default async function DownloadPage({ params }: Props) {
   }
 
   const remaining = MAX_DOWNLOADS - gate.order.downloadCount;
+  const showRetryHint =
+    errorParam === "limit" ||
+    errorParam === "expired" ||
+    errorParam === "failed";
 
   return (
     <Container className="flex flex-col items-center py-24 text-center">
@@ -62,6 +77,17 @@ export default async function DownloadPage({ params }: Props) {
       <p className="font-english mt-2 text-sm text-[var(--muted)]">
         Remaining: {remaining} / {MAX_DOWNLOADS}
       </p>
+
+      {showRetryHint ? (
+        <p
+          className="mt-4 max-w-md rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="alert"
+        >
+          आताही डाउनलोड अयशस्वी झाले तर पान{" "}
+          <strong>Refresh</strong> करा किंवा Admin कडून नवीन लिंक (Renew)
+          मागा. एकाच वेळी बटण पुन्हा-पुन्हा दाबू नका.
+        </p>
+      ) : null}
 
       <a
         href={`/api/download/${token}`}

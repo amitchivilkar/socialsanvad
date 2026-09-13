@@ -7,19 +7,51 @@ import {
 import { loadEbookPdf } from "@/lib/fulfill-order";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ token: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+function isLikelyBot(request: Request): boolean {
+  const ua = (request.headers.get("user-agent") || "").toLowerCase();
+  if (!ua) return false;
+  // Only known *preview crawlers* — do NOT match generic "whatsapp" (in-app browser).
+  return (
+    ua.includes("facebookexternalhit") ||
+    ua.includes("facebot") ||
+    ua.includes("twitterbot") ||
+    ua.includes("slackbot") ||
+    ua.includes("telegrambot") ||
+    ua.includes("discordbot") ||
+    ua.includes("linkedinbot") ||
+    ua.includes("whatsapp/") || // WhatsApp link-preview crawler, not WebView
+    ua.includes("googlebot") ||
+    ua.includes("bingbot")
+  );
+}
+
+function redirectToPage(request: Request, token: string, error: string) {
+  const url = new URL(`/download/${token}`, request.url);
+  url.searchParams.set("error", error);
+  return NextResponse.redirect(url, {
+    status: 303,
+    headers: { "Cache-Control": "no-store, max-age=0" },
+  });
+}
+
+export async function GET(request: Request, { params }: Params) {
   const { token } = await params;
+
+  // Link previews must not burn download slots
+  if (isLikelyBot(request)) {
+    return NextResponse.redirect(new URL(`/download/${token}`, request.url), {
+      status: 303,
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
+  }
 
   const gate = await assertCanDownload(token);
   if (!gate.ok) {
-    // Prefer the HTML download page over raw JSON in browsers / WhatsApp
-    return NextResponse.redirect(
-      new URL(`/download/${token}`, _request.url),
-      303
-    );
+    return redirectToPage(request, token, gate.code);
   }
 
   try {
@@ -28,10 +60,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     const consumed = await tryConsumeDownload(gate.order.orderId);
     if (!consumed.ok) {
-      return NextResponse.redirect(
-        new URL(`/download/${token}`, _request.url),
-        303
-      );
+      return redirectToPage(request, token, consumed.code);
     }
 
     const remaining = MAX_DOWNLOADS - consumed.order.downloadCount;
@@ -41,18 +70,12 @@ export async function GET(_request: Request, { params }: Params) {
       headers: {
         "Content-Type": pdf.contentType,
         "Content-Disposition": `attachment; filename="${pdf.filename}"`,
-        "Cache-Control": "no-store",
+        "Cache-Control": "no-store, max-age=0",
         "X-Download-Remaining": String(Math.max(0, remaining)),
       },
     });
   } catch (err) {
     console.error("[download]", err);
-    return NextResponse.json(
-      {
-        error:
-          "PDF आता उपलब्ध नाही. कृपया contact@ / WhatsApp वर लिहा.",
-      },
-      { status: 500 }
-    );
+    return redirectToPage(request, token, "failed");
   }
 }
