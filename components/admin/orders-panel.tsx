@@ -47,6 +47,21 @@ export function OrdersPanel({
   const [editPhone, setEditPhone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editResendWa, setEditResendWa] = useState(true);
+  const [logsOrder, setLogsOrder] = useState<OrderRow | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsData, setLogsData] = useState<{
+    logs: Array<{
+      id: string;
+      at: string;
+      ip: string;
+      device: string;
+      userAgent: string;
+    }>;
+    uniqueIpCount: number;
+    uniqueIps: string[];
+    shareLikely: boolean;
+    downloadCount: number;
+  } | null>(null);
 
   useEffect(() => {
     setStatusFilter(initialStatusFilter);
@@ -240,6 +255,37 @@ export function OrdersPanel({
     setSuccess("");
   }
 
+  async function openLogs(o: OrderRow) {
+    setLogsOrder(o);
+    setLogsData(null);
+    setLogsLoading(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/admin/orders/download-logs?orderId=${encodeURIComponent(o.orderId)}`,
+        { cache: "no-store", credentials: "same-origin" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not load download logs");
+        setLogsOrder(null);
+        return;
+      }
+      setLogsData({
+        logs: data.logs || [],
+        uniqueIpCount: data.uniqueIpCount || 0,
+        uniqueIps: data.uniqueIps || [],
+        shareLikely: Boolean(data.shareLikely),
+        downloadCount: data.downloadCount ?? o.downloadCount,
+      });
+    } catch {
+      setError("Could not load download logs");
+      setLogsOrder(null);
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
   async function onSaveEdit() {
     if (!editing) return;
     const name = editName.trim();
@@ -419,7 +465,7 @@ export function OrdersPanel({
             <tr>
               <th className="px-4 py-3 font-medium">Customer</th>
               <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Downloads</th>
+              <th className="px-4 py-3 font-medium">Used</th>
               <th className="px-4 py-3 font-medium">Expiry</th>
               <th className="px-4 py-3 font-medium">Link</th>
               <th className="px-4 py-3 font-medium">Actions</th>
@@ -475,6 +521,15 @@ export function OrdersPanel({
                   </td>
                   <td className="font-english px-4 py-4 tabular-nums">
                     {o.downloadCount}/{maxDownloads}
+                    {o.downloadCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void openLogs(o)}
+                        className="mt-1 block text-[11px] text-[var(--muted)] underline-offset-2 hover:underline"
+                      >
+                        View logs
+                      </button>
+                    ) : null}
                   </td>
                   <td className="px-4 py-4 text-xs">
                     <ExpiryCell order={o} expired={isExpired(o)} />
@@ -504,6 +559,7 @@ export function OrdersPanel({
                       onWhatsApp={() => onWhatsAppSend(o)}
                       onBlog={() => onBlogSend(o)}
                       onEdit={() => openEdit(o)}
+                      onLogs={() => void openLogs(o)}
                     />
                   </td>
                 </tr>
@@ -538,7 +594,7 @@ export function OrdersPanel({
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
                 <p>
-                  Downloads:{" "}
+                  Used:{" "}
                   <span className="font-english text-[var(--foreground)]">
                     {o.downloadCount}/{maxDownloads}
                   </span>
@@ -563,12 +619,109 @@ export function OrdersPanel({
                   onWhatsApp={() => onWhatsAppSend(o)}
                   onBlog={() => onBlogSend(o)}
                   onEdit={() => openEdit(o)}
+                  onLogs={() => void openLogs(o)}
                 />
               </div>
             </article>
           ))
         )}
       </div>
+
+      {logsOrder ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="download-logs-title"
+        >
+          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-lg">
+            <h2
+              id="download-logs-title"
+              className="font-heading text-lg font-semibold"
+            >
+              Download logs — {logsOrder.name}
+            </h2>
+            <p className="font-english mt-1 text-xs text-[var(--muted)]">
+              {logsOrder.phone} · used {logsData?.downloadCount ?? logsOrder.downloadCount}/
+              {maxDownloads}
+            </p>
+
+            {logsLoading ? (
+              <p className="mt-6 text-sm text-[var(--muted)]">Loading…</p>
+            ) : logsData ? (
+              <div className="mt-4 space-y-3">
+                <div
+                  className={
+                    logsData.shareLikely
+                      ? "rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                      : "rounded-xl border border-[var(--border)] bg-[var(--secondary)]/40 px-4 py-3 text-sm text-[var(--muted)]"
+                  }
+                >
+                  {logsData.shareLikely ? (
+                    <>
+                      <strong className="text-amber-950">Share likely:</strong>{" "}
+                      {logsData.uniqueIpCount} different IPs downloaded this
+                      file.
+                    </>
+                  ) : logsData.logs.length === 0 ? (
+                    <>No download events logged yet (only new downloads after this update).</>
+                  ) : (
+                    <>
+                      {logsData.uniqueIpCount <= 1
+                        ? "Same IP so far — likely one device/network."
+                        : `${logsData.uniqueIpCount} IPs seen.`}
+                    </>
+                  )}
+                </div>
+
+                <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
+                  {logsData.logs.length === 0 ? (
+                    <li className="px-4 py-8 text-center text-sm text-[var(--muted)]">
+                      Empty
+                    </li>
+                  ) : (
+                    logsData.logs.map((log) => (
+                      <li key={log.id} className="px-4 py-3 text-sm">
+                        <p className="font-english text-xs text-[var(--muted)]">
+                          {new Date(log.at).toLocaleString("en-IN", {
+                            dateStyle: "medium",
+                            timeStyle: "medium",
+                          })}
+                        </p>
+                        <p className="mt-1 font-medium">
+                          {log.device}{" "}
+                          <span className="font-english font-normal text-[var(--muted)]">
+                            · {log.ip}
+                          </span>
+                        </p>
+                        <p
+                          className="font-english mt-1 truncate text-[11px] text-[var(--muted)]"
+                          title={log.userAgent}
+                        >
+                          {log.userAgent || "—"}
+                        </p>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setLogsOrder(null);
+                  setLogsData(null);
+                }}
+                className="inline-flex h-10 items-center rounded-full border border-[var(--border)] px-4 text-sm font-medium hover:bg-[var(--secondary)]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {editing ? (
         <div
@@ -647,9 +800,12 @@ export function OrdersPanel({
 
       <p className="text-xs leading-relaxed text-[var(--muted)]">
         <strong className="text-[var(--foreground)]">Edit</strong> = fix name /
-        phone (wrong WhatsApp number).{" "}
+        phone. <strong className="text-[var(--foreground)]">Logs</strong> = each
+        download time + IP (multiple IPs ⇒ link may be shared).{" "}
+        <strong className="text-[var(--foreground)]">Used</strong> = downloads
+        consumed / limit.{" "}
         <strong className="text-[var(--foreground)]">WhatsApp</strong> = ebook
-        download template (renews link if expired).{" "}
+        template.
         <strong className="text-[var(--foreground)]">Blog</strong> uses article
         fields from{" "}
         <Link href="/admin/messaging" className="underline">

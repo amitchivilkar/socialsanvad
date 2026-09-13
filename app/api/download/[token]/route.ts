@@ -4,6 +4,10 @@ import {
   MAX_DOWNLOADS,
   tryConsumeDownload,
 } from "@/lib/orders-store";
+import {
+  appendDownloadLog,
+  clientIpFromRequest,
+} from "@/lib/download-logs";
 import { loadEbookPdf } from "@/lib/fulfill-order";
 
 export const runtime = "nodejs";
@@ -23,7 +27,7 @@ function isLikelyBot(request: Request): boolean {
     ua.includes("telegrambot") ||
     ua.includes("discordbot") ||
     ua.includes("linkedinbot") ||
-    ua.includes("whatsapp/") || // WhatsApp link-preview crawler, not WebView
+    ua.includes("whatsapp/") ||
     ua.includes("googlebot") ||
     ua.includes("bingbot")
   );
@@ -41,7 +45,6 @@ function redirectToPage(request: Request, token: string, error: string) {
 export async function GET(request: Request, { params }: Params) {
   const { token } = await params;
 
-  // Link previews must not burn download slots
   if (isLikelyBot(request)) {
     return NextResponse.redirect(new URL(`/download/${token}`, request.url), {
       status: 303,
@@ -55,12 +58,22 @@ export async function GET(request: Request, { params }: Params) {
   }
 
   try {
-    // Load PDF first so a storage failure does not burn a download slot
     const pdf = await loadEbookPdf();
 
     const consumed = await tryConsumeDownload(gate.order.orderId);
     if (!consumed.ok) {
       return redirectToPage(request, token, consumed.code);
+    }
+
+    const ua = request.headers.get("user-agent") || "";
+    try {
+      await appendDownloadLog({
+        orderId: consumed.order.orderId,
+        ip: clientIpFromRequest(request),
+        userAgent: ua,
+      });
+    } catch (logErr) {
+      console.error("[download-log]", logErr);
     }
 
     const remaining = MAX_DOWNLOADS - consumed.order.downloadCount;

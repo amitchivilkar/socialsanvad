@@ -4,6 +4,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  List,
   MessageCircle,
   Pencil,
   RefreshCw,
@@ -67,6 +68,7 @@ export function OrderActions({
   onWhatsApp,
   onBlog,
   onEdit,
+  onLogs,
 }: {
   order: OrderRow;
   renewing: boolean;
@@ -79,6 +81,7 @@ export function OrderActions({
   onWhatsApp: () => void;
   onBlog: () => void;
   onEdit: () => void;
+  onLogs: () => void;
 }) {
   const paid = order.status === "paid";
   const busy = sending || blogSending || renewing;
@@ -96,6 +99,15 @@ export function OrderActions({
       </button>
       {paid ? (
         <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onLogs}
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--secondary)] disabled:opacity-50"
+          >
+            <List className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Logs
+          </button>
           <button
             type="button"
             disabled={busy}
