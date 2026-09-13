@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   assertCanDownload,
-  incrementDownloadCount,
   MAX_DOWNLOADS,
+  tryConsumeDownload,
 } from "@/lib/orders-store";
 import { loadEbookPdf } from "@/lib/fulfill-order";
 
@@ -15,17 +15,26 @@ export async function GET(_request: Request, { params }: Params) {
 
   const gate = await assertCanDownload(token);
   if (!gate.ok) {
-    return NextResponse.json(
-      { error: gate.message, code: gate.code },
-      { status: gate.code === "not_found" ? 404 : 403 }
+    // Prefer the HTML download page over raw JSON in browsers / WhatsApp
+    return NextResponse.redirect(
+      new URL(`/download/${token}`, _request.url),
+      303
     );
   }
 
   try {
-    const updated = await incrementDownloadCount(gate.order.orderId);
+    // Load PDF first so a storage failure does not burn a download slot
     const pdf = await loadEbookPdf();
 
-    const remaining = MAX_DOWNLOADS - (updated?.downloadCount ?? gate.order.downloadCount + 1);
+    const consumed = await tryConsumeDownload(gate.order.orderId);
+    if (!consumed.ok) {
+      return NextResponse.redirect(
+        new URL(`/download/${token}`, _request.url),
+        303
+      );
+    }
+
+    const remaining = MAX_DOWNLOADS - consumed.order.downloadCount;
 
     return new NextResponse(new Uint8Array(pdf.buffer), {
       status: 200,

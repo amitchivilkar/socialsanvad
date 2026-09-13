@@ -395,11 +395,51 @@ export async function assertCanDownload(
 export async function incrementDownloadCount(
   orderId: string
 ): Promise<OrderRecord | null> {
+  const result = await tryConsumeDownload(orderId);
+  return result.ok ? result.order : null;
+}
+
+/**
+ * Atomically-ish consume one download slot.
+ * Re-checks limit on fresh read so concurrent clicks cannot push past MAX
+ * (e.g. 6/5). Returns limit if already exhausted.
+ */
+export async function tryConsumeDownload(
+  orderId: string
+): Promise<
+  | { ok: true; order: OrderRecord }
+  | {
+      ok: false;
+      code: "limit" | "not_found";
+      message: string;
+      order?: OrderRecord;
+    }
+> {
   const order = await getOrder(orderId);
-  if (!order) return null;
-  order.downloadCount += 1;
-  await writeOrder(order);
-  return order;
+  if (!order) {
+    return {
+      ok: false,
+      code: "not_found",
+      message: "ही लिंक अवैध आहे किंवा कालबाह्य झाली आहे.",
+    };
+  }
+
+  if (order.downloadCount >= MAX_DOWNLOADS) {
+    return {
+      ok: false,
+      code: "limit",
+      message: `डाउनलोड मर्यादा संपली (${MAX_DOWNLOADS} वेळा). मदतीसाठी संपर्क साधा.`,
+      order,
+    };
+  }
+
+  const next = Math.min(order.downloadCount + 1, MAX_DOWNLOADS);
+  const updated: OrderRecord = {
+    ...order,
+    downloadCount: next,
+  };
+  await writeOrder(updated);
+  return { ok: true, order: updated };
 }
 
 export function getDownloadUrl(token: string): string {
