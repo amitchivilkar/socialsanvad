@@ -5,8 +5,25 @@ export function isMsg91Configured(): boolean {
   return Boolean(
     process.env.MSG91_AUTH_KEY &&
       process.env.MSG91_INTEGRATED_NUMBER &&
-      process.env.MSG91_TEMPLATE_NAME
+      (process.env.MSG91_TEMPLATE_V1 ||
+        process.env.MSG91_TEMPLATE_V2 ||
+        process.env.MSG91_TEMPLATE_BUNDLE ||
+        process.env.MSG91_TEMPLATE_NAME)
   );
+}
+
+/** Map order ebookSlug → approved download template name. */
+export function ebookTemplateForSlug(ebookSlug: string): string {
+  const v1 = process.env.MSG91_TEMPLATE_V1 || "ebook_download_v1";
+  const v2 = process.env.MSG91_TEMPLATE_V2 || "ebook_download_v2";
+  const bundle =
+    process.env.MSG91_TEMPLATE_BUNDLE || "ebook_download_bundle";
+  const legacy = process.env.MSG91_TEMPLATE_NAME;
+
+  if (ebookSlug === "karykartyachi-ai-diary-2") return v2;
+  if (ebookSlug === "karykartyachi-ai-diary-bundle") return bundle;
+  if (ebookSlug === "karykartyachi-ai-diary") return v1;
+  return legacy || v1;
 }
 
 export function isBlogMsg91Configured(): boolean {
@@ -94,12 +111,20 @@ type SendEbookParams = {
   name: string;
   orderId: string;
   downloadUrl: string;
+  /** Secure path token — used when button expects URL suffix only. */
+  downloadToken: string;
+  ebookSlug: string;
 };
 
 /**
- * Sends approved Utility template.
- * Default mapping: body_1=name, body_2=downloadUrl, body_3=orderId
- * Override with MSG91_VAR_* env if your template order differs.
+ * Post-purchase download WhatsApp.
+ *
+ * New templates (button CTA):
+ *   body_1 = name, body_2 = orderId
+ *   button_1 = Visit website (full download URL by default)
+ *
+ * Legacy (MSG91_EBOOK_LEGACY_BODY_URL=true):
+ *   body_1=name, body_2=downloadUrl, body_3=orderId — no button
  */
 export async function sendEbookWhatsApp(
   params: SendEbookParams
@@ -108,25 +133,43 @@ export async function sendEbookWhatsApp(
     return { ok: false, error: "MSG91 not configured" };
   }
 
-  const templateName = process.env.MSG91_TEMPLATE_NAME!;
+  const templateName = ebookTemplateForSlug(params.ebookSlug);
   const language = process.env.MSG91_TEMPLATE_LANGUAGE || "mr";
   const namespace = process.env.MSG91_TEMPLATE_NAMESPACE;
+  const legacyBodyUrl = process.env.MSG91_EBOOK_LEGACY_BODY_URL === "true";
 
-  const v1 = process.env.MSG91_VAR_1 || "name";
-  const v2 = process.env.MSG91_VAR_2 || "downloadUrl";
-  const v3 = process.env.MSG91_VAR_3 || "orderId";
+  const name = params.name.trim() || "मित्र";
+  const orderId = params.orderId.trim();
+  const downloadUrl = params.downloadUrl.trim();
+  const token = params.downloadToken.trim();
 
-  const values: Record<string, string> = {
-    name: params.name,
-    downloadUrl: params.downloadUrl,
-    orderId: params.orderId,
-  };
+  let components: Record<string, { type: string; value: string }>;
 
-  const components: Record<string, { type: string; value: string }> = {
-    body_1: { type: "text", value: values[v1] || params.name },
-    body_2: { type: "text", value: values[v2] || params.downloadUrl },
-    body_3: { type: "text", value: values[v3] || params.orderId },
-  };
+  if (legacyBodyUrl) {
+    const v1 = process.env.MSG91_VAR_1 || "name";
+    const v2 = process.env.MSG91_VAR_2 || "downloadUrl";
+    const v3 = process.env.MSG91_VAR_3 || "orderId";
+    const values: Record<string, string> = {
+      name,
+      downloadUrl,
+      orderId,
+    };
+    components = {
+      body_1: { type: "text", value: values[v1] || name },
+      body_2: { type: "text", value: values[v2] || downloadUrl },
+      body_3: { type: "text", value: values[v3] || orderId },
+    };
+  } else {
+    // Button value: full URL works with MSG91 click-tracking; suffix-only if configured.
+    const buttonValue =
+      process.env.MSG91_EBOOK_BUTTON_MODE === "suffix" ? token : downloadUrl;
+
+    components = {
+      body_1: { type: "text", value: name },
+      body_2: { type: "text", value: orderId },
+      button_1: { type: "url", value: buttonValue },
+    };
+  }
 
   return sendWhatsAppTemplate({
     templateName,

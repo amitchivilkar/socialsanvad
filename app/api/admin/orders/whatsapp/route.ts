@@ -81,6 +81,8 @@ export async function POST(request: Request) {
     name: order.name,
     orderId: order.orderId,
     downloadUrl,
+    downloadToken: order.downloadToken,
+    ebookSlug: order.ebookSlug,
   });
 
   if (!sent.ok) {

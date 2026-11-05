@@ -46,6 +46,8 @@ export async function fulfillPaidOrder(orderId: string): Promise<FulfillResult> 
     name: order.name,
     orderId: order.orderId,
     downloadUrl,
+    downloadToken: order.downloadToken,
+    ebookSlug: order.ebookSlug,
   });
 
   if (sent.ok) {
