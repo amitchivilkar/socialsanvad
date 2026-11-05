@@ -1,10 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
-import { formatInr, getEbook } from "@/lib/ebooks";
+import {
+  AI_DIARY_LANDING_SLUG,
+  formatInr,
+  getEbook,
+} from "@/lib/ebooks";
 
 export function EbookTeaser() {
-  const ebook = getEbook("karykartyachi-ai-diary");
+  const ebook = getEbook(AI_DIARY_LANDING_SLUG);
   if (!ebook) return null;
 
   return (
@@ -29,16 +33,17 @@ export function EbookTeaser() {
           <div>
             <p className="text-sm font-medium text-[var(--muted)]">ई-बुक</p>
             <h2 className="font-heading mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-              {ebook.title}
+              कार्यकर्त्याची AI डायरी
             </h2>
             <p className="mt-2 max-w-xl text-base text-[var(--muted)]">
-              “आज काय पोस्ट टाकू?” हा प्रश्न संपवा — फक्त {formatInr(ebook.priceInr)}
+              1.0 {formatInr(125)} · 2.0 {formatInr(149)} · Bundle{" "}
+              {formatInr(225)} — एकाच पेजवर आवृत्ती निवडा.
             </p>
             <Link
-              href={`/ebook/${ebook.slug}`}
+              href={`/ebook/${AI_DIARY_LANDING_SLUG}`}
               className="mt-6 inline-flex h-11 items-center rounded-full bg-[var(--foreground)] px-6 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90"
             >
-              अधिक जाणून घ्या
+              आवृत्ती निवडा व खरेदी करा
             </Link>
           </div>
         </div>

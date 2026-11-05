@@ -1,39 +1,34 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
-import { Check, ShieldCheck, Zap } from "lucide-react";
-import { BuyEbookButton } from "@/components/ebook/buy-ebook-button";
+import { Suspense, type ReactNode } from "react";
+import { Check, Zap } from "lucide-react";
+import { DiaryHeroCover } from "@/components/ebook/diary-hero-cover";
+import { DiaryVersionPicker } from "@/components/ebook/diary-version-picker";
 import { Container } from "@/components/ui/container";
 import { FadeIn } from "@/components/ui/fade-in";
-import { formatInr, getEbook } from "@/lib/ebooks";
+import {
+  AI_DIARY_LANDING_SLUG,
+  getAiDiaryVersions,
+  getEbook,
+  parseAiDiaryVersion,
+} from "@/lib/ebooks";
 import { siteConfig } from "@/lib/site";
 
-const SLUG = "karykartyachi-ai-diary";
+const SLUG = AI_DIARY_LANDING_SLUG;
 
 /** Easy to update as sales grow */
 const SOCIAL_PROOF_TEXT =
   "आतापर्यंत शेकडो कार्यकर्त्यांनी ही डायरी घेतली आहे";
 
-/** Display-only compare-at price (checkout still uses ebook.priceInr) */
-const COMPARE_AT_PRICE_INR = 299;
-
-/** Urgency near price — update copy/date anytime */
-const URGENCY_TEXT = "ही सवलत मर्यादित काळासाठी उपलब्ध आहे";
-
-/** Short answer near top CTA (full FAQ stays at bottom) */
-const PDF_DELIVERY_HINT =
-  "PDF कसं मिळेल? पेमेंट झाल्यावर लगेच website वर download लिंक मिळते.";
-
 export const metadata: Metadata = {
-  title: "कार्यकर्त्याची AI डायरी | ई-बुक",
+  title: "कार्यकर्त्याची AI डायरी | 1.0 · 2.0 · Bundle",
   description:
-    "आज काय पोस्ट टाकू? हा प्रश्न संपवा. राजकीय कार्यकर्त्यांसाठी AI कंटेंट सिस्टम — फक्त ₹125.",
+    "आज काय पोस्ट टाकू? हा प्रश्न संपवा. AI डायरी 1.0 (₹125), 2.0 (₹149) किंवा Bundle (₹225) — एकाच पेजवर निवडा.",
   openGraph: {
     title: "कार्यकर्त्याची AI डायरी",
-    description: "AI कंटेंट सिस्टम — फक्त ₹125",
-    images: [{ url: "/images/karykartyachi-ai-diary.png" }],
+    description: "1.0 · 2.0 · Bundle — AI कंटेंट सिस्टम",
+    images: [{ url: "/images/karyakartyachi-ai-diary-10.png" }],
   },
   alternates: { canonical: `/ebook/${SLUG}` },
 };
@@ -92,6 +87,10 @@ const faqs = [
     q: "फोनवर वाचता / वापरता येईल का?",
     a: "हो. PDF फोन, टॅबलेट आणि कॉम्प्युटरवर उघडता येते.",
   },
+  {
+    q: "1.0, 2.0 की Bundle — काय घ्यावे?",
+    a: "नवीन सुरू करत असाल तर 2.0 किंवा Bundle. Bundle मध्ये दोन्ही PDFs मिळतात आणि ₹49 बचत होते. फक्त मूळ डायरी हवी असल्यास 1.0 निवडा.",
+  },
 ];
 
 const painPoints = [
@@ -100,47 +99,6 @@ const painPoints = [
   "वेळच मिळत नाही…",
   "इतरांसारखा कंटेंट कसा बनवू?",
 ];
-
-function PriceBlock({
-  salePrice,
-  compareAt,
-  align = "start",
-}: {
-  salePrice: string;
-  compareAt: string;
-  align?: "start" | "center";
-}) {
-  return (
-    <div
-      className={
-        align === "center"
-          ? "flex flex-col items-center gap-2"
-          : "flex flex-col gap-2"
-      }
-    >
-      <div
-        className={`flex flex-wrap items-center gap-2 ${align === "center" ? "justify-center" : ""}`}
-      >
-        <span className="inline-flex w-fit rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-white">
-          विशेष किंमत
-        </span>
-        <span className="inline-flex w-fit rounded-full border border-red-600/30 bg-red-50 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300">
-          {URGENCY_TEXT}
-        </span>
-      </div>
-      <div
-        className={`flex flex-wrap items-baseline gap-3 ${align === "center" ? "justify-center" : ""}`}
-      >
-        <p className="font-heading text-4xl font-semibold tabular-nums text-[var(--foreground)] sm:text-[2.75rem]">
-          {salePrice}
-        </p>
-        <p className="font-heading text-xl tabular-nums text-[var(--muted)] line-through decoration-2 sm:text-2xl">
-          {compareAt}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
@@ -151,12 +109,34 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-export default function EbookSalesPage() {
-  const ebook = getEbook(SLUG);
-  if (!ebook) notFound();
+function VersionCheckout(props: {
+  versions: ReturnType<typeof getAiDiaryVersions>;
+  initialVersion: ReturnType<typeof parseAiDiaryVersion>;
+  align?: "start" | "center";
+  showHighlights?: boolean;
+  showDeliveryHints?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-40 animate-pulse rounded-2xl bg-[var(--secondary)]" />
+      }
+    >
+      <DiaryVersionPicker {...props} />
+    </Suspense>
+  );
+}
 
-  const price = formatInr(ebook.priceInr);
-  const compareAt = formatInr(COMPARE_AT_PRICE_INR);
+export default async function EbookSalesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ v?: string }>;
+}) {
+  const ebook = getEbook(SLUG)!;
+  const versions = getAiDiaryVersions();
+  const { v } = await searchParams;
+  const initialVersion = parseAiDiaryVersion(v);
 
   return (
     <div className="pb-20">
@@ -183,8 +163,8 @@ export default function EbookSalesPage() {
         </div>
       </div>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-[var(--border)]">
+      {/* Hero: fit first viewport; Buy stays above the fold */}
+      <section className="relative flex min-h-[calc(100dvh-3.5rem)] flex-col overflow-hidden border-b border-[var(--border)] sm:min-h-[calc(100dvh-4rem)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.45]"
           aria-hidden
@@ -194,57 +174,39 @@ export default function EbookSalesPage() {
             backgroundSize: "22px 22px",
           }}
         />
-        <div className="relative mx-auto grid max-w-6xl md:grid-cols-2">
-          {/* Copy first in DOM so headline paints before/without waiting on image */}
-          <div className="order-1 flex flex-col justify-center px-5 py-10 sm:px-10 sm:py-14 md:order-2 md:py-16 lg:px-14">
-            <p className="font-english text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+        <div className="relative mx-auto grid w-full max-w-6xl flex-1 md:grid-cols-2 md:items-center">
+          {/* Copy + checkout first so Buy is visible without scrolling on mobile */}
+          <div className="order-1 flex flex-col justify-center px-5 py-5 sm:px-10 sm:py-8 md:order-2 md:py-10 lg:px-14">
+            <p className="font-english text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] sm:text-xs">
               Social Sanvad · ई-बुक
             </p>
-            <h1 className="font-heading mt-3 text-3xl font-semibold leading-tight tracking-tight text-[var(--foreground)] sm:text-4xl lg:text-[2.65rem]">
+            <h1 className="font-heading mt-2 text-2xl font-semibold leading-tight tracking-tight text-[var(--foreground)] sm:text-3xl lg:text-[2.15rem]">
               “आज काय पोस्ट टाकू?” हा प्रश्न आता संपवा
             </h1>
-            <p className="mt-5 text-lg leading-relaxed text-[var(--muted)]">
-              राजकीय कार्यकर्त्यांसाठी तयार AI कंटेंट सिस्टम — जी रोजचा ताण कमी
-              करेल आणि लोकांपर्यंत पोहोच वाढवेल.
+            <p className="mt-2 hidden text-sm leading-snug text-[var(--muted)] sm:mt-3 sm:line-clamp-2 sm:block sm:text-base">
+              राजकीय कार्यकर्त्यांसाठी AI कंटेंट सिस्टम — 1.0, 2.0 किंवा Bundle.
             </p>
 
-            <p className="mt-6 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-3.5 py-1.5 text-sm font-medium text-[var(--foreground)] shadow-sm">
+            <p className="mt-3 inline-flex w-fit max-w-full items-center gap-2 truncate rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)] sm:text-sm">
               <span
                 className="h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]"
                 aria-hidden
               />
-              {SOCIAL_PROOF_TEXT}
+              <span className="truncate">{SOCIAL_PROOF_TEXT}</span>
             </p>
 
-            <div className="mt-8 flex flex-wrap items-end gap-4">
-              <PriceBlock salePrice={price} compareAt={compareAt} />
-              <p className="pb-1 text-sm text-[var(--muted)]">एकदाच · PDF</p>
-            </div>
-
-            <div className="mt-6">
-              <BuyEbookButton
-                ebookSlug={ebook.slug}
-                ebookTitle={ebook.title}
-                coverImage={ebook.cover}
-                ctaLabel={ebook.ctaLabel}
-                priceLabel={price}
-                variant="primary"
+            <div className="mt-4" id="buy">
+              <VersionCheckout
+                versions={versions}
+                initialVersion={initialVersion}
+                compact
+                showHighlights={false}
+                showDeliveryHints={false}
               />
             </div>
-            <p className="mt-3 text-sm font-medium text-[var(--foreground)]/85">
-              {PDF_DELIVERY_HINT}
-            </p>
-            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--muted)]">
-              <span className="inline-flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
-                पेमेंट सुरक्षित · Cashfree
-              </span>
-              <span className="text-[var(--border)]">·</span>
-              <span>पेमेंट झाल्यावर लगेच डाउनलोड करा</span>
-            </p>
           </div>
 
-          <div className="relative order-2 flex items-center justify-center overflow-hidden bg-[var(--secondary)] px-6 py-10 sm:px-10 sm:py-14 md:order-1 md:py-16">
+          <div className="relative order-2 hidden items-center justify-center overflow-hidden bg-[var(--secondary)] px-6 py-6 md:order-1 md:flex md:min-h-full md:py-10 lg:px-10">
             <div
               className="pointer-events-none absolute -left-16 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-[var(--primary)]/35 blur-3xl"
               aria-hidden
@@ -253,26 +215,22 @@ export default function EbookSalesPage() {
               className="pointer-events-none absolute -right-10 bottom-8 h-40 w-40 rounded-full bg-[var(--primary)]/25 blur-2xl"
               aria-hidden
             />
-            {/* No FadeIn — LCP element must paint immediately */}
-            <div className="relative aspect-[2/3] w-full max-w-[380px]">
-              <div
-                className="absolute inset-0"
-                style={{
-                  filter:
-                    "drop-shadow(0 28px 40px rgba(0,0,0,0.3)) drop-shadow(0 10px 16px rgba(0,0,0,0.16))",
-                }}
-              >
-                <Image
-                  src={ebook.cover}
-                  alt={ebook.title}
-                  fill
-                  priority
-                  fetchPriority="high"
-                  className="object-contain object-center"
-                  sizes="(max-width: 768px) 100vw, 600px"
-                />
-              </div>
-            </div>
+            <Suspense
+              fallback={
+                <div className="relative aspect-[2/3] w-full max-w-[280px] lg:max-w-[320px]">
+                  <Image
+                    src={ebook.cover}
+                    alt={ebook.title}
+                    fill
+                    priority
+                    className="object-contain object-center"
+                    sizes="320px"
+                  />
+                </div>
+              }
+            >
+              <DiaryHeroCover versions={versions} />
+            </Suspense>
           </div>
         </div>
       </section>
@@ -355,8 +313,8 @@ export default function EbookSalesPage() {
           </div>
 
           <FadeIn>
-            <div className="mt-12 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--secondary)] px-6 py-8 text-center sm:px-10">
-              <p className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)]">
+            <div className="mt-12 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--secondary)] px-6 py-8 sm:px-10">
+              <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-[var(--muted)]">
                 <Zap
                   className="h-3.5 w-3.5 text-[var(--foreground)]"
                   strokeWidth={1.75}
@@ -364,17 +322,16 @@ export default function EbookSalesPage() {
                 आत्ताच सुरू करा
               </p>
               <div className="mt-5 flex justify-center">
-                <BuyEbookButton
-                  ebookSlug={ebook.slug}
-                  ebookTitle={ebook.title}
-                  coverImage={ebook.cover}
-                  ctaLabel={ebook.ctaLabel}
-                  priceLabel={price}
-                  variant="primary"
+                <VersionCheckout
+                  versions={versions}
+                  initialVersion={initialVersion}
+                  align="center"
+                  showHighlights={false}
+                  showDeliveryHints={false}
                 />
               </div>
-              <p className="mt-3 text-sm text-[var(--muted)]">
-                पेमेंट सुरक्षित · Cashfree · पेमेंट झाल्यावर लगेच डाउनलोड करा
+              <p className="mt-3 text-center text-sm text-[var(--muted)]">
+                पेमेंट सुरक्षित · Cashfree · ५ डाउनलोड · ७२ तास
               </p>
             </div>
           </FadeIn>
@@ -499,28 +456,16 @@ export default function EbookSalesPage() {
                 वेळ वाया घालवू नका. स्मार्ट वर्क सुरू करा.
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-base text-[var(--muted)] sm:text-lg">
-                आजच {ebook.title} घ्या आणि तुमची डिजिटल सिस्टीम तयार करा.
+                1.0, 2.0 किंवा Bundle निवडा — आजच डिजिटल सिस्टीम सुरू करा.
               </p>
               <div className="mt-6 flex justify-center">
-                <PriceBlock
-                  salePrice={price}
-                  compareAt={compareAt}
+                <VersionCheckout
+                  versions={versions}
+                  initialVersion={initialVersion}
                   align="center"
+                  showHighlights={false}
                 />
               </div>
-              <div className="mt-6 flex justify-center">
-                <BuyEbookButton
-                  ebookSlug={ebook.slug}
-                  ebookTitle={ebook.title}
-                  coverImage={ebook.cover}
-                  ctaLabel={ebook.ctaLabel}
-                  priceLabel={price}
-                  variant="primary"
-                />
-              </div>
-              <p className="mt-3 text-sm text-[var(--muted)]">
-                पेमेंट सुरक्षित · Cashfree · पेमेंट झाल्यावर लगेच डाउनलोड करा
-              </p>
               <p className="mt-6 text-sm text-[var(--muted)]">
                 प्रश्न?{" "}
                 <a

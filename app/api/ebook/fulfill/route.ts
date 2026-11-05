@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchCashfreeOrder, isCashfreeConfigured } from "@/lib/cashfree";
+import { getEbook } from "@/lib/ebooks";
 import { fulfillPaidOrder } from "@/lib/fulfill-order";
 import { getOrder } from "@/lib/orders-store";
 
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     }
 
     const result = await fulfillPaidOrder(orderId);
+    const ebook = getEbook(result.order?.ebookSlug || existing.ebookSlug);
 
     return NextResponse.json({
       paid: true,
@@ -53,6 +55,9 @@ export async function POST(request: Request) {
       downloadUrl: result.downloadUrl,
       whatsappSent: result.whatsappSent,
       whatsappError: result.whatsappError,
+      ebookSlug: ebook?.slug,
+      ebookTitle: ebook?.title,
+      priceInr: ebook?.priceInr,
       downloadsRemaining:
         result.order && result.order.downloadToken
           ? Math.max(0, 5 - result.order.downloadCount)

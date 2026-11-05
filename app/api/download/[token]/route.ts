@@ -8,6 +8,7 @@ import {
   appendDownloadLog,
   clientIpFromRequest,
 } from "@/lib/download-logs";
+import { getEbook } from "@/lib/ebooks";
 import { loadEbookPdf } from "@/lib/fulfill-order";
 
 export const runtime = "nodejs";
@@ -44,6 +45,7 @@ function redirectToPage(request: Request, token: string, error: string) {
 
 export async function GET(request: Request, { params }: Params) {
   const { token } = await params;
+  const fileParam = new URL(request.url).searchParams.get("file");
 
   if (isLikelyBot(request)) {
     return NextResponse.redirect(new URL(`/download/${token}`, request.url), {
@@ -57,8 +59,21 @@ export async function GET(request: Request, { params }: Params) {
     return redirectToPage(request, token, gate.code);
   }
 
+  const ebook = getEbook(gate.order.ebookSlug);
+  if (!ebook) {
+    return redirectToPage(request, token, "failed");
+  }
+
+  // Bundle / multi-PDF: require explicit file pick so each download is intentional.
+  if (ebook.pdfFiles.length > 1 && !fileParam) {
+    return NextResponse.redirect(new URL(`/download/${token}`, request.url), {
+      status: 303,
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
+  }
+
   try {
-    const pdf = await loadEbookPdf();
+    const pdf = await loadEbookPdf(gate.order.ebookSlug, fileParam);
 
     const consumed = await tryConsumeDownload(gate.order.orderId);
     if (!consumed.ok) {

@@ -21,6 +21,7 @@ type CreateOrderInput = {
   customerEmail?: string;
   returnUrl: string;
   notifyUrl?: string;
+  orderNote?: string;
 };
 
 export async function createCashfreeOrder(input: CreateOrderInput) {
@@ -55,7 +56,7 @@ export async function createCashfreeOrder(input: CreateOrderInput) {
         return_url: input.returnUrl,
         ...(input.notifyUrl ? { notify_url: input.notifyUrl } : {}),
       },
-      order_note: "karykartyachi-ai-diary",
+      order_note: input.orderNote || "karykartyachi-ai-diary",
     }),
   });
 

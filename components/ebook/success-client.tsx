@@ -17,37 +17,9 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
   const [whatsappSent, setWhatsappSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [ebookTitle, setEbookTitle] = useState("ई-बुक");
+  const [ebookSlug, setEbookSlug] = useState("karykartyachi-ai-diary");
   const purchaseTracked = useRef(false);
-
-  useEffect(() => {
-    if (!initiallyPaid || purchaseTracked.current) return;
-    purchaseTracked.current = true;
-
-    const storageKey = orderId
-      ? `meta_purchase_${orderId}`
-      : "meta_purchase_unknown";
-
-    try {
-      if (sessionStorage.getItem(storageKey) === "1") return;
-    } catch {
-      /* ignore */
-    }
-
-    trackMetaEvent("Purchase", {
-      value: 125,
-      currency: "INR",
-      content_name: "कार्यकर्त्याची AI डायरी",
-      content_ids: ["karykartyachi-ai-diary"],
-      content_type: "product",
-      order_id: orderId,
-    });
-
-    try {
-      sessionStorage.setItem(storageKey, "1");
-    } catch {
-      /* ignore */
-    }
-  }, [initiallyPaid, orderId]);
 
   useEffect(() => {
     if (!orderId || !initiallyPaid) return;
@@ -66,6 +38,9 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
 
         if (data.paid) setPaid(true);
         if (data.downloadUrl) setDownloadUrl(data.downloadUrl);
+        if (data.ebookTitle) setEbookTitle(data.ebookTitle);
+        if (data.ebookSlug) setEbookSlug(data.ebookSlug);
+
         if (data.whatsappSent) {
           setWhatsappSent(true);
           setNote("PDF लिंक WhatsApp वर पाठवली आहे.");
@@ -76,8 +51,39 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
               : "खालील secure link ने PDF डाउनलोड करा."
           );
         }
+
+        if (
+          data.paid &&
+          !purchaseTracked.current &&
+          typeof data.priceInr === "number"
+        ) {
+          purchaseTracked.current = true;
+          const storageKey = `meta_purchase_${orderId}`;
+          try {
+            if (sessionStorage.getItem(storageKey) === "1") return;
+          } catch {
+            /* ignore */
+          }
+
+          trackMetaEvent("Purchase", {
+            value: data.priceInr,
+            currency: "INR",
+            content_name: data.ebookTitle || "ई-बुक",
+            content_ids: [data.ebookSlug || "ebook"],
+            content_type: "product",
+            order_id: orderId,
+          });
+
+          try {
+            sessionStorage.setItem(storageKey, "1");
+          } catch {
+            /* ignore */
+          }
+        }
       } catch {
-        if (!cancelled) setNote("लिंक तयार करताना अडचण आली. थोड्या वेळाने refresh करा.");
+        if (!cancelled) {
+          setNote("लिंक तयार करताना अडचण आली. थोड्या वेळाने refresh करा.");
+        }
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -89,7 +95,7 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
   }, [orderId, initiallyPaid]);
 
   const waMessage = encodeURIComponent(
-    `नमस्कार! मी "कार्यकर्त्याची AI डायरी" घेतली.${orderId ? ` Order: ${orderId}` : ""} PDF हवी आहे.`
+    `नमस्कार! मी "${ebookTitle}" घेतली.${orderId ? ` Order: ${orderId}` : ""} PDF हवी आहे.`
   );
   const waHref = `${siteConfig.social.whatsapp}?text=${waMessage}`;
 
@@ -141,7 +147,13 @@ export function SuccessClient({ orderId, initiallyPaid, status }: Props) {
       </a>
 
       <Link
-        href="/ebook/karykartyachi-ai-diary"
+        href={
+          ebookSlug === "karykartyachi-ai-diary-2"
+            ? "/ebook/karykartyachi-ai-diary?v=2"
+            : ebookSlug === "karykartyachi-ai-diary-bundle"
+              ? "/ebook/karykartyachi-ai-diary?v=bundle"
+              : "/ebook/karykartyachi-ai-diary"
+        }
         className="mt-4 text-sm text-[var(--muted)] underline-offset-4 hover:underline"
       >
         ← ई-बुक पेजवर जा

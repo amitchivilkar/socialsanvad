@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { getEbook } from "@/lib/ebooks";
 import {
   assertCanDownload,
   MAX_DOWNLOADS,
@@ -58,6 +59,8 @@ export default async function DownloadPage({ params, searchParams }: Props) {
     );
   }
 
+  const ebook = getEbook(gate.order.ebookSlug);
+  const files = ebook?.pdfFiles ?? [];
   const remaining = MAX_DOWNLOADS - gate.order.downloadCount;
   const showRetryHint =
     errorParam === "limit" ||
@@ -70,9 +73,17 @@ export default async function DownloadPage({ params, searchParams }: Props) {
       <h1 className="font-heading mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
         तुमची PDF तयार आहे
       </h1>
+      {ebook ? (
+        <p className="mt-2 text-base font-medium text-[var(--foreground)]">
+          {ebook.title}
+        </p>
+      ) : null}
       <p className="mt-4 max-w-md text-base text-[var(--muted)] sm:text-lg">
         ही लिंक फक्त तुमच्या खरेदीसाठी आहे. जास्तीत जास्त {MAX_DOWNLOADS} वेळा
-        डाउनलोड करता येईल.
+        डाउनलोड करता येईल
+        {files.length > 1
+          ? " (प्रत्येक फाइल क्लिक = १ डाउनलोड)."
+          : "."}
       </p>
       <p className="font-english mt-2 text-sm text-[var(--muted)]">
         Remaining: {remaining} / {MAX_DOWNLOADS}
@@ -89,13 +100,32 @@ export default async function DownloadPage({ params, searchParams }: Props) {
         </p>
       ) : null}
 
-      <a
-        href={`/api/download/${token}`}
-        className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-base font-medium text-[var(--background)]"
-      >
-        <Download className="h-4 w-4" strokeWidth={1.75} />
-        PDF डाउनलोड करा
-      </a>
+      <div className="mt-8 flex w-full max-w-md flex-col gap-3">
+        {files.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">
+            फाइल माहिती सापडली नाही. संपर्क साधा.
+          </p>
+        ) : files.length === 1 ? (
+          <a
+            href={`/api/download/${token}`}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-base font-medium text-[var(--background)]"
+          >
+            <Download className="h-4 w-4" strokeWidth={1.75} />
+            PDF डाउनलोड करा
+          </a>
+        ) : (
+          files.map((f) => (
+            <a
+              key={f.filename}
+              href={`/api/download/${token}?file=${encodeURIComponent(f.filename)}`}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-base font-medium text-[var(--background)]"
+            >
+              <Download className="h-4 w-4" strokeWidth={1.75} />
+              {f.label}
+            </a>
+          ))
+        )}
+      </div>
 
       <p className="mt-6 max-w-sm text-xs text-[var(--muted)]">
         लिंक शेअर करू नका. कालबाह्य / मर्यादा संपल्यास{" "}
