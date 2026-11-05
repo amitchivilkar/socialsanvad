@@ -1,5 +1,10 @@
+import { getEbook } from "@/lib/ebooks";
+
 const MSG91_ENDPOINT =
   "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
+
+/** Same WABA namespace as blog templates unless overridden. */
+const DEFAULT_EBOOK_NAMESPACE = "3c119cfc_8dca_4e60_b53d_28e9458ff7c2";
 
 export function isMsg91Configured(): boolean {
   return Boolean(
@@ -10,6 +15,29 @@ export function isMsg91Configured(): boolean {
         process.env.MSG91_TEMPLATE_BUNDLE ||
         process.env.MSG91_TEMPLATE_NAME)
   );
+}
+
+function siteBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.socialsanvad.com"
+  ).replace(/\/$/, "");
+}
+
+/** Absolute HTTPS cover URL for WhatsApp header image. */
+export function ebookHeaderImageUrl(ebookSlug: string): string {
+  const override = process.env.MSG91_EBOOK_HEADER_IMAGE?.trim();
+  if (override) return override;
+
+  const ebook = getEbook(ebookSlug);
+  const cover = ebook?.cover?.trim();
+  if (cover?.startsWith("http://") || cover?.startsWith("https://")) {
+    return cover;
+  }
+  if (cover?.startsWith("/")) {
+    return `${siteBaseUrl()}${cover}`;
+  }
+
+  return `${siteBaseUrl()}/images/karyakartyachi-ai-diary-10.png`;
 }
 
 /** Map order ebookSlug → approved download template name. */
@@ -179,12 +207,13 @@ type SendEbookParams = {
 /**
  * Post-purchase download WhatsApp.
  *
- * New templates (button CTA):
- *   body_1 = name, body_2 = orderId
- *   button_1 = Visit website (full download URL by default)
+ * Approved MSG91 shape (ebook_download_*):
+ *   namespace + header_1 (image) + body_1 (name) + body_2 (orderId)
+ *   Visit-website button is static on the template — do not send button_1
+ *   unless MSG91_EBOOK_INCLUDE_BUTTON=true (dynamic URL button).
  *
  * Legacy (MSG91_EBOOK_LEGACY_BODY_URL=true):
- *   body_1=name, body_2=downloadUrl, body_3=orderId — no button
+ *   body_1=name, body_2=downloadUrl, body_3=orderId — no header/button
  */
 export async function sendEbookWhatsApp(
   params: SendEbookParams
@@ -195,7 +224,8 @@ export async function sendEbookWhatsApp(
 
   const templateName = ebookTemplateForSlug(params.ebookSlug);
   const language = process.env.MSG91_TEMPLATE_LANGUAGE || "mr";
-  const namespace = process.env.MSG91_TEMPLATE_NAMESPACE;
+  const namespace =
+    process.env.MSG91_TEMPLATE_NAMESPACE?.trim() || DEFAULT_EBOOK_NAMESPACE;
   const legacyBodyUrl = process.env.MSG91_EBOOK_LEGACY_BODY_URL === "true";
 
   const name = params.name.trim() || "मित्र";
@@ -220,18 +250,31 @@ export async function sendEbookWhatsApp(
       body_3: { type: "text", value: values[v3] || orderId },
     };
   } else {
-    // Meta dynamic URL buttons usually expect only the path suffix after the
-    // fixed template prefix. Use MSG91_EBOOK_BUTTON_MODE=full for whole URL.
-    const buttonMode = (
-      process.env.MSG91_EBOOK_BUTTON_MODE || "suffix"
+    const headerUrl = ebookHeaderImageUrl(params.ebookSlug);
+    const body2Mode = (
+      process.env.MSG91_EBOOK_BODY_2 || "orderId"
     ).toLowerCase();
-    const buttonValue = buttonMode === "full" ? downloadUrl : token;
+    const body2 =
+      body2Mode === "downloadurl" || body2Mode === "url"
+        ? downloadUrl
+        : orderId;
 
     components = {
+      header_1: { type: "image", value: headerUrl },
       body_1: { type: "text", value: name },
-      body_2: { type: "text", value: orderId },
-      button_1: { type: "url", value: buttonValue },
+      body_2: { type: "text", value: body2 },
     };
+
+    // Only if the approved template has a *dynamic* Visit website URL variable.
+    if (process.env.MSG91_EBOOK_INCLUDE_BUTTON === "true") {
+      const buttonMode = (
+        process.env.MSG91_EBOOK_BUTTON_MODE || "suffix"
+      ).toLowerCase();
+      components.button_1 = {
+        type: "url",
+        value: buttonMode === "full" ? downloadUrl : token,
+      };
+    }
   }
 
   return sendWhatsAppTemplate({
