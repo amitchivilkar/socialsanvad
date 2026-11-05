@@ -113,6 +113,13 @@ export async function POST(request: Request) {
 
     const result = await fulfillPaidOrder(orderId);
 
+    console.log("[cashfree webhook] fulfill", {
+      orderId,
+      fulfilled: Boolean(result.order?.status === "paid"),
+      whatsappSent: result.whatsappSent,
+      whatsappError: result.whatsappError || null,
+    });
+
     return NextResponse.json({
       received: true,
       fulfilled: Boolean(result.order?.status === "paid"),

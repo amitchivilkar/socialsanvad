@@ -52,8 +52,20 @@ export async function fulfillPaidOrder(orderId: string): Promise<FulfillResult> 
 
   if (sent.ok) {
     await markWhatsappSent(order.orderId);
+    console.log("[fulfill] whatsapp accepted", {
+      orderId: order.orderId,
+      phone: order.phone,
+      ebookSlug: order.ebookSlug,
+    });
     return { order, downloadUrl, whatsappSent: true };
   }
+
+  console.error("[fulfill] whatsapp failed", {
+    orderId: order.orderId,
+    phone: order.phone,
+    ebookSlug: order.ebookSlug,
+    error: sent.error,
+  });
 
   return {
     order,

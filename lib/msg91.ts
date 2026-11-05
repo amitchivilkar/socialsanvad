@@ -44,18 +44,58 @@ type TemplateRecipient = {
   components: Record<string, { type: string; value: string }>;
 };
 
+type Msg91BulkResponse = {
+  status?: string;
+  hasError?: boolean;
+  message?: string;
+  errors?: unknown;
+  request_id?: string;
+  data?: unknown;
+};
+
+function msg91SoftError(data: Msg91BulkResponse): string | null {
+  if (data.hasError === true) {
+    if (typeof data.message === "string" && data.message.trim()) {
+      return data.message.trim();
+    }
+    if (typeof data.data === "string" && data.data.trim()) {
+      return data.data.trim();
+    }
+    if (data.errors != null) {
+      try {
+        return JSON.stringify(data.errors);
+      } catch {
+        return "MSG91 hasError=true";
+      }
+    }
+    return "MSG91 hasError=true";
+  }
+
+  const status = (data.status || "").toLowerCase();
+  if (status && status !== "success") {
+    return (
+      (typeof data.message === "string" && data.message.trim()) ||
+      (typeof data.data === "string" && data.data.trim()) ||
+      `MSG91 status=${data.status}`
+    );
+  }
+
+  return null;
+}
+
 async function sendWhatsAppTemplate(input: {
   templateName: string;
   language: string;
   namespace?: string;
   recipients: TemplateRecipient[];
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; requestId?: string }> {
   if (!process.env.MSG91_AUTH_KEY || !process.env.MSG91_INTEGRATED_NUMBER) {
     return { ok: false, error: "MSG91 not configured" };
   }
 
   const authkey = process.env.MSG91_AUTH_KEY;
   const integrated = process.env.MSG91_INTEGRATED_NUMBER.replace(/\D/g, "");
+  const phones = input.recipients.map((r) => normalizePhone(r.phone));
 
   const template: Record<string, unknown> = {
     name: input.templateName,
@@ -83,6 +123,13 @@ async function sendWhatsAppTemplate(input: {
     },
   };
 
+  console.log("[msg91] send", {
+    template: input.templateName,
+    language: input.language,
+    namespace: input.namespace || null,
+    to: phones,
+  });
+
   const res = await fetch(MSG91_ENDPOINT, {
     method: "POST",
     headers: {
@@ -93,17 +140,30 @@ async function sendWhatsAppTemplate(input: {
     cache: "no-store",
   });
 
-  const data = await res.json().catch(() => ({}));
+  const data = (await res.json().catch(() => ({}))) as Msg91BulkResponse;
 
   if (!res.ok) {
     const message =
-      (data as { message?: string })?.message ||
+      data.message ||
+      (typeof data.data === "string" ? data.data : null) ||
       `MSG91 failed (${res.status})`;
-    console.error("[msg91]", message, data);
+    console.error("[msg91] http error", message, data);
     return { ok: false, error: message };
   }
 
-  return { ok: true };
+  const soft = msg91SoftError(data);
+  if (soft) {
+    console.error("[msg91] soft error", soft, data);
+    return { ok: false, error: soft, requestId: data.request_id };
+  }
+
+  console.log("[msg91] accepted", {
+    template: input.templateName,
+    requestId: data.request_id || null,
+    to: phones,
+  });
+
+  return { ok: true, requestId: data.request_id };
 }
 
 type SendEbookParams = {
@@ -160,9 +220,12 @@ export async function sendEbookWhatsApp(
       body_3: { type: "text", value: values[v3] || orderId },
     };
   } else {
-    // Button value: full URL works with MSG91 click-tracking; suffix-only if configured.
-    const buttonValue =
-      process.env.MSG91_EBOOK_BUTTON_MODE === "suffix" ? token : downloadUrl;
+    // Meta dynamic URL buttons usually expect only the path suffix after the
+    // fixed template prefix. Use MSG91_EBOOK_BUTTON_MODE=full for whole URL.
+    const buttonMode = (
+      process.env.MSG91_EBOOK_BUTTON_MODE || "suffix"
+    ).toLowerCase();
+    const buttonValue = buttonMode === "full" ? downloadUrl : token;
 
     components = {
       body_1: { type: "text", value: name },

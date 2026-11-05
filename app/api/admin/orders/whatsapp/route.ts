@@ -86,12 +86,17 @@ export async function POST(request: Request) {
   });
 
   if (!sent.ok) {
+    console.error("[admin whatsapp] failed", {
+      orderId,
+      error: sent.error,
+    });
     return NextResponse.json(
       { error: sent.error || "WhatsApp send failed", downloadUrl, renewed },
       { status: 502 }
     );
   }
 
+  console.log("[admin whatsapp] accepted", { orderId, phone: order.phone });
   await markWhatsappSent(order.orderId);
 
   return NextResponse.json({
