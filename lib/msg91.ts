@@ -67,9 +67,16 @@ function normalizePhone(phone: string): string {
   return digits.length === 10 ? `91${digits}` : digits;
 }
 
+type TemplateComponent = {
+  type: string;
+  value: string;
+  /** Required for Visit website dynamic buttons (Meta). */
+  sub_type?: string;
+};
+
 type TemplateRecipient = {
   phone: string;
-  components: Record<string, { type: string; value: string }>;
+  components: Record<string, TemplateComponent>;
 };
 
 type Msg91BulkResponse = {
@@ -233,7 +240,7 @@ export async function sendEbookWhatsApp(
   const downloadUrl = params.downloadUrl.trim();
   const token = params.downloadToken.trim();
 
-  let components: Record<string, { type: string; value: string }>;
+  let components: Record<string, TemplateComponent>;
 
   if (legacyBodyUrl) {
     const v1 = process.env.MSG91_VAR_1 || "name";
@@ -265,13 +272,14 @@ export async function sendEbookWhatsApp(
       body_2: { type: "text", value: body2 },
     };
 
-    // Dynamic Visit website {{1}}: Meta expects parameter type "text", not "url".
+    // Dynamic Visit website {{1}}: Meta wants param type "text" + button sub_type "url".
     if (process.env.MSG91_EBOOK_INCLUDE_BUTTON === "true") {
       const buttonMode = (
         process.env.MSG91_EBOOK_BUTTON_MODE || "suffix"
       ).toLowerCase();
       components.button_1 = {
         type: "text",
+        sub_type: "url",
         value: buttonMode === "full" ? downloadUrl : token,
       };
     }
