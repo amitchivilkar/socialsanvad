@@ -209,8 +209,8 @@ type SendEbookParams = {
  *
  * Approved MSG91 shape (ebook_download_*):
  *   namespace + header_1 (image) + body_1 (name) + body_2 (orderId)
- *   Visit-website button is static on the template — do not send button_1
- *   unless MSG91_EBOOK_INCLUDE_BUTTON=true (dynamic URL button).
+ *   Dynamic Visit-website button: set MSG91_EBOOK_INCLUDE_BUTTON=true and
+ *   send button_1 as type "text" (Meta rejects type "url" on button params).
  *
  * Legacy (MSG91_EBOOK_LEGACY_BODY_URL=true):
  *   body_1=name, body_2=downloadUrl, body_3=orderId — no header/button
@@ -265,13 +265,13 @@ export async function sendEbookWhatsApp(
       body_2: { type: "text", value: body2 },
     };
 
-    // Only if the approved template has a *dynamic* Visit website URL variable.
+    // Dynamic Visit website {{1}}: Meta expects parameter type "text", not "url".
     if (process.env.MSG91_EBOOK_INCLUDE_BUTTON === "true") {
       const buttonMode = (
         process.env.MSG91_EBOOK_BUTTON_MODE || "suffix"
       ).toLowerCase();
       components.button_1 = {
-        type: "url",
+        type: "text",
         value: buttonMode === "full" ? downloadUrl : token,
       };
     }
