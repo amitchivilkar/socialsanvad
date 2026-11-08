@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { Gift, MessageCircle } from "lucide-react";
 import { AdminError, AdminSuccess } from "./admin-alerts";
 import {
   ARTICLE_TITLE_KEY,
@@ -10,12 +10,15 @@ import {
   type OrderRow,
 } from "./types";
 
+const DIARY_V1_SLUG = "karykartyachi-ai-diary";
+
 type MessagingPanelProps = {
   orders: OrderRow[];
   error: string;
   success: string;
   onError: (msg: string) => void;
   onSuccess: (msg: string) => void;
+  onOrdersChanged?: () => void | Promise<void>;
 };
 
 export function MessagingPanel({
@@ -24,6 +27,7 @@ export function MessagingPanel({
   success,
   onError,
   onSuccess,
+  onOrdersChanged,
 }: MessagingPanelProps) {
   const [articleTitle, setArticleTitle] = useState("");
   const [articleUrl, setArticleUrl] = useState("");
@@ -32,8 +36,17 @@ export function MessagingPanel({
   const [blogSendingId, setBlogSendingId] = useState<string | null>(null);
   const [blogBulkSending, setBlogBulkSending] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [giftSendingId, setGiftSendingId] = useState<string | null>(null);
+  const [giftBulkSending, setGiftBulkSending] = useState(false);
+  const [confirmGiftBulk, setConfirmGiftBulk] = useState(false);
 
   const paidOrders = orders.filter((o) => o.status === "paid");
+  const diwaliEligible = paidOrders.filter(
+    (o) => o.ebookSlug === DIARY_V1_SLUG && !o.diwaliGiftSentAt
+  );
+  const diwaliAlreadySent = paidOrders.filter(
+    (o) => o.ebookSlug === DIARY_V1_SLUG && Boolean(o.diwaliGiftSentAt)
+  );
 
   useEffect(() => {
     setArticleTitle(localStorage.getItem(ARTICLE_TITLE_KEY) || "");
@@ -148,6 +161,61 @@ export function MessagingPanel({
     setExtraPhone("");
   }
 
+  async function onDiwaliGift(
+    o: OrderRow | null,
+    options?: { sendToEligible?: boolean; forceResend?: boolean }
+  ) {
+    onError("");
+    onSuccess("");
+
+    if (!options?.sendToEligible && !o) {
+      onError("No recipient selected.");
+      return;
+    }
+
+    if (options?.sendToEligible) {
+      setGiftBulkSending(true);
+      setConfirmGiftBulk(false);
+    } else if (o) {
+      setGiftSendingId(o.orderId);
+    }
+
+    try {
+      const res = await fetch("/api/admin/orders/diwali-gift", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          orderId: options?.sendToEligible ? undefined : o?.orderId,
+          sendToEligible: options?.sendToEligible ?? false,
+          forceResend: options?.forceResend ?? false,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        onError(data.error || "Diwali gift send failed");
+        return;
+      }
+      if (options?.sendToEligible) {
+        onSuccess(
+          `Diwali gift: ${data.sent} sent${data.skipped ? `, ${data.skipped} skipped` : ""}${data.failed ? `, ${data.failed} failed` : ""}.`
+        );
+      } else if (o) {
+        onSuccess(
+          data.skipped
+            ? `Already sent to ${o.name} — skipped.`
+            : `Diwali 2.0 gift sent to ${o.name}.`
+        );
+      }
+      await onOrdersChanged?.();
+    } catch {
+      onError("Diwali gift send failed");
+    } finally {
+      setGiftSendingId(null);
+      setGiftBulkSending(false);
+    }
+  }
+
   const bulkCount =
     paidOrders.length +
     (extraName.trim() && extraPhone.trim().length >= 10 ? 1 : 0);
@@ -156,6 +224,86 @@ export function MessagingPanel({
     <div className="space-y-4">
       <AdminError message={error} />
       <AdminSuccess message={success} />
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-heading text-base font-semibold">
+              Diwali gift — AI डायरी 2.0 free
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+              Template{" "}
+              <span className="font-english">ebook_diwali_gift_v2</span> — paid
+              1.0 buyers only. Creates a secure 2.0 download link (72h / 5
+              downloads) and WhatsApp with Visit-website button.
+            </p>
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Pending:{" "}
+              <span className="font-english font-medium text-[var(--foreground)]">
+                {diwaliEligible.length}
+              </span>
+              {diwaliAlreadySent.length > 0 ? (
+                <>
+                  {" "}
+                  · Already sent:{" "}
+                  <span className="font-english">
+                    {diwaliAlreadySent.length}
+                  </span>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={giftBulkSending || !diwaliEligible.length}
+            onClick={() => setConfirmGiftBulk(true)}
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[var(--foreground)] px-4 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <Gift
+              className={`h-4 w-4 ${giftBulkSending ? "animate-pulse" : ""}`}
+              strokeWidth={1.75}
+            />
+            {giftBulkSending
+              ? "Sending…"
+              : `Send to eligible (${diwaliEligible.length})`}
+          </button>
+        </div>
+
+        {diwaliEligible.length > 0 ? (
+          <ul className="mt-4 max-h-56 space-y-2 overflow-y-auto">
+            {diwaliEligible.map((o) => (
+              <li
+                key={o.orderId}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{o.name}</p>
+                  <p className="font-english text-xs text-[var(--muted)]">
+                    {o.phone}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={
+                    giftSendingId === o.orderId ||
+                    giftBulkSending ||
+                    blogBulkSending
+                  }
+                  onClick={() => void onDiwaliGift(o)}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-medium hover:bg-[var(--secondary)] disabled:opacity-50"
+                >
+                  {giftSendingId === o.orderId ? "Sending…" : "Send gift"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            No pending 1.0 buyers — everyone already gifted, or no paid 1.0
+            orders.
+          </p>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -327,6 +475,50 @@ export function MessagingPanel({
                 className="inline-flex h-10 items-center rounded-full bg-[var(--foreground)] px-4 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-50"
               >
                 {blogBulkSending ? "Sending…" : "Confirm send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmGiftBulk ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="gift-confirm-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6 shadow-lg">
+            <h2
+              id="gift-confirm-title"
+              className="font-heading text-lg font-semibold"
+            >
+              Send Diwali 2.0 gift?
+            </h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              <span className="font-english font-medium text-[var(--foreground)]">
+                {diwaliEligible.length}
+              </span>{" "}
+              paid 1.0 buyer(s) will get a secure 2.0 download link via
+              WhatsApp. Already-gifted numbers are skipped.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmGiftBulk(false)}
+                className="inline-flex h-10 items-center rounded-full border border-[var(--border)] px-4 text-sm font-medium hover:bg-[var(--secondary)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={giftBulkSending}
+                onClick={() =>
+                  void onDiwaliGift(null, { sendToEligible: true })
+                }
+                className="inline-flex h-10 items-center rounded-full bg-[var(--foreground)] px-4 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-50"
+              >
+                {giftBulkSending ? "Sending…" : "Confirm gift send"}
               </button>
             </div>
           </div>

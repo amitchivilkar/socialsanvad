@@ -9,6 +9,8 @@ export type OrderRow = {
   downloadUrl?: string | null;
   downloadExpiresAt?: string;
   whatsappSentAt?: string;
+  diwaliGiftSentAt?: string;
+  diwaliGiftOrderId?: string;
   createdAt: string;
   paidAt?: string;
 };

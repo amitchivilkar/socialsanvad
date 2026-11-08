@@ -37,7 +37,7 @@ export default function AdminMessagingPage() {
   return (
     <AdminShell
       title="Messaging"
-      description="Send blog article links via WhatsApp (MSG91 bloglinksupdate)."
+      description="Diwali 2.0 gift for 1.0 buyers, and blog article WhatsApp."
       onRefresh={onRefresh}
       refreshing={refreshing}
     >
@@ -47,6 +47,7 @@ export default function AdminMessagingPage() {
         success={success}
         onError={setError}
         onSuccess={setSuccess}
+        onOrdersChanged={loadOrders}
       />
     </AdminShell>
   );

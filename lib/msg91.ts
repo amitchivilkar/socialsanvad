@@ -62,6 +62,14 @@ export function isBlogMsg91Configured(): boolean {
   );
 }
 
+export function isDiwaliGiftConfigured(): boolean {
+  return Boolean(
+    process.env.MSG91_AUTH_KEY &&
+      process.env.MSG91_INTEGRATED_NUMBER &&
+      (process.env.MSG91_DIWALI_GIFT_TEMPLATE || "ebook_diwali_gift_v2")
+  );
+}
+
 function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   return digits.length === 10 ? `91${digits}` : digits;
@@ -284,6 +292,62 @@ export async function sendEbookWhatsApp(
       };
     }
   }
+
+  return sendWhatsAppTemplate({
+    templateName,
+    language,
+    namespace,
+    recipients: [{ phone: params.phone, components }],
+  });
+}
+
+type SendDiwaliGiftParams = {
+  phone: string;
+  name: string;
+  downloadUrl: string;
+  downloadToken: string;
+};
+
+/**
+ * Diwali free 2.0 gift — marketing template `ebook_diwali_gift_v2`.
+ * header image + body_1 name + button_1 dynamic download token.
+ */
+export async function sendDiwaliGiftWhatsApp(
+  params: SendDiwaliGiftParams
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isDiwaliGiftConfigured()) {
+    return { ok: false, error: "Diwali gift MSG91 template not configured" };
+  }
+
+  const templateName =
+    process.env.MSG91_DIWALI_GIFT_TEMPLATE || "ebook_diwali_gift_v2";
+  const language =
+    process.env.MSG91_DIWALI_GIFT_LANGUAGE ||
+    process.env.MSG91_TEMPLATE_LANGUAGE ||
+    "mr";
+  const namespace =
+    process.env.MSG91_DIWALI_GIFT_NAMESPACE?.trim() ||
+    process.env.MSG91_TEMPLATE_NAMESPACE?.trim() ||
+    DEFAULT_EBOOK_NAMESPACE;
+
+  const headerOverride = process.env.MSG91_DIWALI_GIFT_HEADER_IMAGE?.trim();
+  const headerUrl =
+    headerOverride || ebookHeaderImageUrl("karykartyachi-ai-diary-2");
+  const downloadUrl = params.downloadUrl.trim();
+  const token = params.downloadToken.trim();
+  const buttonMode = (
+    process.env.MSG91_EBOOK_BUTTON_MODE || "suffix"
+  ).toLowerCase();
+
+  const components: Record<string, TemplateComponent> = {
+    header_1: { type: "image", value: headerUrl },
+    body_1: { type: "text", value: params.name.trim() || "मित्र" },
+    button_1: {
+      type: "text",
+      sub_type: "url",
+      value: buttonMode === "full" ? downloadUrl : token,
+    },
+  };
 
   return sendWhatsAppTemplate({
     templateName,

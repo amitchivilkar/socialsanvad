@@ -15,9 +15,28 @@ export type OrderRecord = {
   downloadCount: number;
   downloadExpiresAt?: string;
   whatsappSentAt?: string;
+  /** Diwali 2.0 free-gift WhatsApp sent on the source (1.0) order. */
+  diwaliGiftSentAt?: string;
+  /** Linked paid gift order (ebookSlug = 2.0) that holds the download token. */
+  diwaliGiftOrderId?: string;
+  /** If this order is a gift, points back to the original purchase. */
+  giftSourceOrderId?: string;
   createdAt: string;
   paidAt?: string;
 };
+
+export const DIARY_V1_SLUG = "karykartyachi-ai-diary";
+export const DIARY_V2_SLUG = "karykartyachi-ai-diary-2";
+export const DIARY_BUNDLE_SLUG = "karykartyachi-ai-diary-bundle";
+
+/** 1.0-only buyers are the default Diwali gift audience (already have 2.0 via 2.0/bundle). */
+export function isDiwaliGiftEligible(order: OrderRecord): boolean {
+  return (
+    order.status === "paid" &&
+    order.ebookSlug === DIARY_V1_SLUG &&
+    Boolean(order.phone)
+  );
+}
 
 type StoreShape = {
   orders: Record<string, OrderRecord>;
@@ -344,6 +363,101 @@ export async function markWhatsappSent(orderId: string): Promise<void> {
   if (!order) return;
   order.whatsappSentAt = new Date().toISOString();
   await writeOrder(order);
+}
+
+export async function markDiwaliGiftSent(
+  sourceOrderId: string,
+  giftOrderId: string
+): Promise<void> {
+  const order = await getOrder(sourceOrderId);
+  if (!order) return;
+  order.diwaliGiftSentAt = new Date().toISOString();
+  order.diwaliGiftOrderId = giftOrderId;
+  await writeOrder(order);
+}
+
+/**
+ * Create or refresh a paid 2.0 gift download order linked to a source purchase.
+ */
+export async function issueDiwaliGiftOrder(
+  sourceOrderId: string
+): Promise<{
+  source: OrderRecord;
+  gift: OrderRecord;
+  downloadUrl: string;
+  renewed: boolean;
+} | null> {
+  const source = await getOrder(sourceOrderId);
+  if (!source || source.status !== "paid") return null;
+
+  const now = Date.now();
+  let gift: OrderRecord | null = null;
+  let renewed = false;
+
+  if (source.diwaliGiftOrderId) {
+    gift = await getOrder(source.diwaliGiftOrderId);
+  }
+
+  const expired =
+    gift?.downloadExpiresAt &&
+    new Date(gift.downloadExpiresAt).getTime() < now;
+
+  if (gift?.status === "paid" && gift.downloadToken && !expired) {
+    return {
+      source,
+      gift,
+      downloadUrl: getDownloadUrl(gift.downloadToken),
+      renewed: false,
+    };
+  }
+
+  if (gift?.status === "paid") {
+    const result = await renewDownloadLink(gift.orderId);
+    if (!result) return null;
+    renewed = true;
+    gift = result.order;
+    const updatedSource: OrderRecord = {
+      ...source,
+      diwaliGiftOrderId: gift.orderId,
+    };
+    await writeOrder(updatedSource);
+    return {
+      source: updatedSource,
+      gift,
+      downloadUrl: result.downloadUrl,
+      renewed,
+    };
+  }
+
+  const giftOrderId = `ss_gift_diwali_${Date.now()}_${randomBytes(4).toString("hex")}`;
+  const token = createDownloadToken();
+  gift = {
+    orderId: giftOrderId,
+    ebookSlug: DIARY_V2_SLUG,
+    name: source.name,
+    phone: source.phone,
+    status: "paid",
+    downloadCount: 0,
+    downloadToken: token,
+    downloadExpiresAt: new Date(now + DOWNLOAD_TTL_MS).toISOString(),
+    giftSourceOrderId: source.orderId,
+    createdAt: new Date().toISOString(),
+    paidAt: new Date().toISOString(),
+  };
+  await writeOrder(gift);
+
+  const updatedSource: OrderRecord = {
+    ...source,
+    diwaliGiftOrderId: giftOrderId,
+  };
+  await writeOrder(updatedSource);
+
+  return {
+    source: updatedSource,
+    gift,
+    downloadUrl: getDownloadUrl(token),
+    renewed: false,
+  };
 }
 
 export type DownloadGateResult =
