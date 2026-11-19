@@ -31,11 +31,11 @@ export function Hero() {
             वेबसाइट — सोप्या मराठीतून, खऱ्या अनुभवातून.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <Button href="/articles" variant="primary" size="lg">
-              लेख वाचा
+            <Button href="/ebook" variant="primary" size="lg">
+              AI डायरी खरेदी करा
             </Button>
-            <Button href="/about" variant="secondary" size="lg">
-              माझ्याबद्दल
+            <Button href="/articles" variant="secondary" size="lg">
+              लेख वाचा
             </Button>
           </div>
         </motion.div>

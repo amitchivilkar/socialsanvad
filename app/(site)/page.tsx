@@ -14,13 +14,13 @@ export default function HomePage() {
     <>
       <Hero />
       <FadeIn>
-        <FeaturedTopics />
+        <EbookTeaser />
       </FadeIn>
       <FadeIn delay={0.05}>
-        <LatestArticles articles={latest} />
+        <FeaturedTopics />
       </FadeIn>
       <FadeIn>
-        <EbookTeaser />
+        <LatestArticles articles={latest} />
       </FadeIn>
       <FadeIn delay={0.05}>
         <Newsletter />

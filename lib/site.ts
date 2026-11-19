@@ -28,6 +28,7 @@ export const siteConfig = {
   nav: [
     { href: "/", label: "होमपेज" },
     { href: "/articles", label: "लेख" },
+    { href: "/ebook", label: "ई-बुक" },
     { href: "/topics", label: "विषय" },
     { href: "/resources", label: "साधने" },
     { href: "/about", label: "माझ्याबद्दल" },
