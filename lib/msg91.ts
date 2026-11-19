@@ -66,7 +66,7 @@ export function isDiwaliGiftConfigured(): boolean {
   return Boolean(
     process.env.MSG91_AUTH_KEY &&
       process.env.MSG91_INTEGRATED_NUMBER &&
-      (process.env.MSG91_DIWALI_GIFT_TEMPLATE || "ebook_diwali_gift_v2")
+      (process.env.MSG91_DIWALI_GIFT_TEMPLATE || "ebook_free_v2_thanks")
   );
 }
 
@@ -309,7 +309,7 @@ type SendDiwaliGiftParams = {
 };
 
 /**
- * Diwali free 2.0 gift — marketing template `ebook_diwali_gift_v2`.
+ * Free 2.0 gift for existing 1.0 buyers — marketing template `ebook_free_v2_thanks`.
  * header image + body_1 name + button_1 dynamic download token.
  */
 export async function sendDiwaliGiftWhatsApp(
@@ -320,7 +320,7 @@ export async function sendDiwaliGiftWhatsApp(
   }
 
   const templateName =
-    process.env.MSG91_DIWALI_GIFT_TEMPLATE || "ebook_diwali_gift_v2";
+    process.env.MSG91_DIWALI_GIFT_TEMPLATE || "ebook_free_v2_thanks";
   const language =
     process.env.MSG91_DIWALI_GIFT_LANGUAGE ||
     process.env.MSG91_TEMPLATE_LANGUAGE ||

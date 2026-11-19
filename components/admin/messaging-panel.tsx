@@ -233,7 +233,7 @@ export function MessagingPanel({
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
               Template{" "}
-              <span className="font-english">ebook_diwali_gift_v2</span> — paid
+              <span className="font-english">ebook_free_v2_thanks</span> — paid
               1.0 buyers only. Creates a secure 2.0 download link (72h / 5
               downloads) and WhatsApp with Visit-website button.
             </p>
